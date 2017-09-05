@@ -2,8 +2,8 @@
 #include <iostream>
 #include <string>
 #include <sys/stat.h>
-#include <string.h>
-#include <gcrypt.h>
+#include <cstring>
+#include <cstdio>
 
 using std::cout;
 using std::cin;
@@ -23,16 +23,26 @@ Suncrypt::Suncrypt()
  **************************************************/
 int Suncrypt::Encrypt(int numParams, char** params)
 {
+     int parseResult;
+     gcry_error_t error;
+
      /* Parse input, check for correct parameters */
-     int parseResult = Parse(numParams, params);
+     parseResult = Parse(numParams, params);
      if(parseResult != 0)
      {
-          PrintErrorMsg(parseResult);
+          ParseErrorMsg(parseResult);
           return parseResult;
      }
 
      GetPassword(password);
-     CreateKey(password);
+     if(CreateKey(password) != 0)
+     {
+          GcryptErrorMsg("CreateKey",error);
+          return -1;
+     }
+     PrintKey(pbkdf2Key, PBKDF2_KEY_SIZE);
+     SetAESKey(pbkdf2Key, PBKDF2_KEY_SIZE);
+     SetHMACKey(pbkdf2Key, PBKDF2_KEY_SIZE);
 
      return 0;
 }
@@ -98,7 +108,7 @@ int Suncrypt::Parse(int numParams, char** params)
 /**************************************************
  *
  **************************************************/
-void Suncrypt::PrintErrorMsg(int errCode)
+void Suncrypt::ParseErrorMsg(int errCode)
 {
      switch(errCode)
      {
@@ -120,26 +130,87 @@ void Suncrypt::PrintErrorMsg(int errCode)
 /**************************************************
  *
  **************************************************/
- void Suncrypt::GetPassword(string &password)
- {
-     cout << "Password: ";
-     cin >> password;
- }
+void Suncrypt::GcryptErrorMsg(string errMsg, gcry_error_t errCode)
+{
+     cout << errMsg << ": [src] " << gcry_strsource(errCode) << " [err] " << gcry_strerror(errCode) << endl;
+}
 
 /**************************************************
  *
  **************************************************/
- void Suncrypt::CreateKey(string password)
- {
+void Suncrypt::PrintKey(unsigned char* key, unsigned int keyLength)
+{
+     cout << "Key: ";
+     for(int i=0; i<keyLength; i++)
+          printf(" %02X ", key[i]);
+     cout << endl;
+}
 
-     gcry_kdf_derive(    password.c_str(),   // password
-                         password.size(),    // password length, octal
-                         GCRY_KDF_PBKDF2,    // key derivation function
-                         //sub               // hash algorithm used by key derivation function
-                         "NaCl",             // salt
-                         4,                  // salt length
-                         4096,               // # iterations
-                         16,                // key size, octal
-                         key                 // key buffer
-                         );
- }
+/**************************************************
+ *
+ **************************************************/
+ void Suncrypt::GetPassword(string &password)
+{
+     cout << "Password: ";
+     cin >> password;    
+}
+
+/**************************************************
+ *
+ **************************************************/
+size_t Suncrypt::DecimalToOctal(unsigned int decimal)
+{
+     size_t octal = 0;
+     unsigned int i = 1;
+
+     while (decimal != 0)
+     {
+          octal += (decimal % 8) * i;
+          decimal /= 8;
+          i *= 10;
+     }
+
+     return octal;
+}
+
+/**************************************************
+ *
+ **************************************************/
+gcry_error_t Suncrypt::CreateKey(string password)
+{
+
+     return gcry_kdf_derive(  password.c_str(),   // password
+                              DecimalToOctal(password.size()),    // password length, octal
+                              GCRY_KDF_PBKDF2,    // key derivation function
+                              GCRY_MD_SHA512,     // hash algorithm used by key derivation function
+                              SALT,               // salt
+                              DecimalToOctal(SALT_LENGTH),        // salt length
+                              SHA512_ITER,        // # iterations
+                              DecimalToOctal(PBKDF2_KEY_SIZE),    // key size, octal
+                              pbkdf2Key           // key buffer
+                              );
+}
+
+/**************************************************
+ *
+ **************************************************/
+void Suncrypt::SetAESKey(unsigned char* key, unsigned int keyLength)
+{
+     memset(aesKey, 0, AES_KEY_SIZE);
+     if(keyLength <= AES_KEY_SIZE)
+          memcpy(aesKey, key, keyLength);
+     else
+          memcpy(aesKey, key, AES_KEY_SIZE);
+}
+
+/**************************************************
+ *
+ **************************************************/
+void Suncrypt::SetHMACKey(unsigned char* key, unsigned int keyLength)
+{
+     memset(hmacKey, 0, HMAC_KEY_SIZE);
+     if(keyLength <= HMAC_KEY_SIZE)
+          memcpy(hmacKey, key, keyLength);
+     else
+          memcpy(hmacKey, key, HMAC_KEY_SIZE);
+}
