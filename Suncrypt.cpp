@@ -36,6 +36,8 @@ int Suncrypt::Encrypt(int numParams, char** params)
           return parseResult;
      }
 
+     sunSocket = new SuncryptSocket(atoi(port.c_str()));
+
      /* Create and display the key */
      if(!gcrypt.CreateKey(key, SUNGCRY_KEY_SIZE))
      {
@@ -72,9 +74,12 @@ int Suncrypt::Encrypt(int numParams, char** params)
                return -1;
           printf("Successfully encrypted %s to %s (%lu bytes written).\n", inputFileName.c_str(), outputFileName.c_str(), cipherTextLength);
      }
-     else
+     else 
      {
-
+          cout << "Transmitting to " << ipAddr << ":" << port << endl;
+          if(sunSocket->Send(ipAddr, (char*)cipherText, cipherTextLength) != 0)
+               return -1;
+          cout << "Successfully received" << endl;
      }
 
      delete[] plainText;

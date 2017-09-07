@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include <vector>
+#include <string>
 
 #define MAX_MSG_SIZE 4096
 #define HEADER_SIZE sizeof(msgHeader_t)
@@ -21,14 +22,15 @@ typedef struct
 class SuncryptSocket
 {
 public:
-	SuncryptSocket(unsigned int recvPort);
+	SuncryptSocket(unsigned int portNum);
 	~SuncryptSocket();
-	int Send(const string destIP, unsigned int destPort, const char* msg, size_t msgLength);
+	int Send(const string destIP, const char* msg, size_t msgLength);
 	int Receive();
 	void GetRecvMsg(char* buffer, size_t bufferLength);
 private:
 	int sockFd;
 	bool socketGood;
+	unsigned int port;
 	vector<char> recvBuffer;
 	unsigned int recvBufferLength;
 	bool recvBufferGood;

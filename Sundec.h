@@ -3,6 +3,7 @@
 
 #include "SunGcrypt.h"
 #include "FileOps.h"
+#include "SuncryptSocket.h"
 #include <string>
 
 using std::string;
@@ -40,6 +41,7 @@ private:
      string key;
 
      SunGcrypt gcrypt;
+     SuncryptSocket* sunSocket;
      FileOps fOps;
      bool localMode;
 };

@@ -36,6 +36,8 @@ int Sundec::Decrypt(int numParams, char** params)
           return parseResult;
      }
 
+     sunSocket = new SuncryptSocket(atoi(port.c_str()));
+
      /* Create and display the key */
      if(!gcrypt.CreateKey(key, SUNGCRY_KEY_SIZE))
      {
@@ -62,7 +64,10 @@ int Sundec::Decrypt(int numParams, char** params)
      }
      else
      {
-
+          if(sunSocket->Receive() != 0)
+               return -1;
+          cout << "RECEIVED" << endl;
+          sunSocket->GetRecvMsg((char*)cipherText, cipherTextLength);
      }
 
      /* Decrypt the file */

@@ -1,9 +1,9 @@
 TARGET_ENC     :=   suncrypt
 TARGET_DEC     :=   sundec
-TARGETS        :=   $(TARGET_ENC) $(TARGET_DEC)
-SRC_ENC        :=   Suncrypt.cpp SunGcrypt.cpp FileOps.cpp
+TARGETS        :=   $(TARGET_ENC) $(TARGET_DEC) $(TARGET_TEST)
+SRC_ENC        :=   Suncrypt.cpp SunGcrypt.cpp FileOps.cpp SuncryptSocket.cpp
 OBJ_ENC        :=   $(SRC_ENC:.cpp=.o)   
-SRC_DEC        :=   Sundec.cpp SunGcrypt.cpp FileOps.cpp
+SRC_DEC        :=   Sundec.cpp SunGcrypt.cpp FileOps.cpp SuncryptSocket.cpp
 OBJ_DEC        :=   $(SRC_DEC:.cpp=.o)   
 LINK           :=   -lgcrypt
 FLAGS          :=   -std=c++0x
