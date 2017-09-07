@@ -63,10 +63,12 @@ int Sundec::Decrypt(int numParams, char** params)
      }
      else
      {
+          cout << "Waiting for connections..." << endl;
           sunSocket = new SuncryptSocket(port);
           numBytes = sunSocket->Receive();
           if(numBytes < 0)
                return -1;
+          cout << "Recevied encrypted file" << endl;
 
           /* Create and display the key */
           if(!gcrypt.CreateKey(key, SUNGCRY_KEY_SIZE))

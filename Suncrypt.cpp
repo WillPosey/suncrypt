@@ -77,7 +77,7 @@ int Suncrypt::Encrypt(int numParams, char** params)
      else 
      {
           cout << "Transmitting to " << ipAddr << ":" << port << endl;
-          if(sunSocket->Send(ipAddr, (char*)plainText, plainTextLength) != 0)
+          if(sunSocket->Send(ipAddr, (char*)cipherText, cipherTextLength) != 0)
                return -1;
           cout << "Successfully received" << endl;
      }
