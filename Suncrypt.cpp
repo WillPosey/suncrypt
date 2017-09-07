@@ -76,6 +76,7 @@ int Suncrypt::Encrypt(int numParams, char** params)
      }
      else 
      {
+          printf("Successfully encrypted %s to %s (%lu bytes written).\n", inputFileName.c_str(), outputFileName.c_str(), cipherTextLength);
           cout << "Transmitting to " << ipAddr << ":" << port << endl;
           if(sunSocket->Send(ipAddr, (char*)cipherText, cipherTextLength) != 0)
                return -1;

@@ -232,9 +232,10 @@ int SuncryptSocket::Receive()
 		else
 		{
 			nextSeqNum = msgHeader.seqNum+1;
-			recvBuffer.insert(recvBuffer.end(), blk+HEADER_SIZE, blk+numBytes);
-			recvBufferLength = recvBuffer.size();
 		}
+		
+		recvBuffer.insert(recvBuffer.end(), blk+HEADER_SIZE, blk+numBytes);
+		recvBufferLength = recvBuffer.size();
 
 		PackHeader(ack, msgHeader);
 		if(sendto(sockFd, ack, HEADER_SIZE, 0, (struct sockaddr*)&senderAddr, senderAddrLen) < 0)
