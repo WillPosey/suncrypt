@@ -156,9 +156,10 @@ int SuncryptSocket::Receive()
 	}
 
 	sockaddr_in senderAddr;
-	uint32_t savedSenderAddr;
+	socklen_t senderAddrLen = sizeof(senderAddr);
+	char senderIP[INET_ADDRSTRLEN];
+	string originalSenderIP;
 	bool firstRecv;
-	socklen_t senderAddrLen;
 	msgHeader_t msgHeader;
 	ssize_t numBytes;
 	char blk[BLK_SIZE];
@@ -176,19 +177,20 @@ int SuncryptSocket::Receive()
 			return -1;
 		}
 
+		inet_ntop(AF_INET, &(senderAddr.sin_addr), senderIP, INET_ADDRSTRLEN);
 		if(firstRecv)
 		{
-			savedSenderAddr = senderAddr.sin_addr.s_addr;
+			originalSenderIP = senderIP;
 			firstRecv = false;
 		}
-		else if(savedSenderAddr != senderAddr.sin_addr.s_addr)
+		else if(originalSenderIP.compare(senderIP) != 0)
 		{
-			cout << "Error: SuncryptSocket::Receive()-->recvfrom() different address" << endl;
+			cout << "Error: SuncryptSocket::Receive()-->recvfrom() different IPs original=" << originalSenderIP << " last=" << senderIP << endl;
 			return -1;
 		}
 
 		GetHeader(blk, &msgHeader);
-		if(msgHeader.msgSize != numBytes-HEADER_SIZE)
+		if(msgHeader.msgSize != (numBytes-HEADER_SIZE))
 		{
 			cout << "Error: SuncryptSocket::Receive()-->recvfrom() Partial Block Received" << endl;
 			cout << "Message Size should have been " << msgHeader.msgSize+HEADER_SIZE << " but was " << numBytes << endl;
@@ -207,6 +209,7 @@ int SuncryptSocket::Receive()
 	}
 
 	recvBufferGood = true;
+	return recvBuffer.size();
 }
 
 /***********************************************************************************

@@ -25,6 +25,7 @@ int main(int argc, char** argv)
 int Sundec::Decrypt(int numParams, char** params)
 {
      int parseResult;
+     int numBytes;
      unsigned char *plainText, *cipherText;
      size_t plainTextLength, cipherTextLength;
 
@@ -64,8 +65,13 @@ int Sundec::Decrypt(int numParams, char** params)
      }
      else
      {
-          if(sunSocket->Receive() != 0)
+          numBytes = sunSocket->Receive();
+          if(numBytes < 0)
                return -1;
+          cipherTextLength = numBytes;
+          plainTextLength = cipherTextLength;
+          cipherText = new unsigned char[cipherTextLength];
+          plainText = new unsigned char[plainTextLength];
           sunSocket->GetRecvMsg((char*)cipherText, cipherTextLength);
      }
 
@@ -84,6 +90,9 @@ int Sundec::Decrypt(int numParams, char** params)
      }
 
      printf("Successfully received and decrypted %s (%lu bytes written).\n", outputFileName.c_str(), plainTextLength);
+     
+     delete[] plainText;
+     delete[] cipherText;
      return 0;
 }
 
