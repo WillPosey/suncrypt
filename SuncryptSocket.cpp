@@ -32,32 +32,34 @@ SuncryptSocket::SuncryptSocket(const string portNum)
 	hints.ai_flags = AI_PASSIVE;
 
 	if (getaddrinfo(NULL, port.c_str(), &hints, &addrInfo) != 0) 
+	{
 		cout << "Error in SuncryptSocket Constructor: getaddrinfo()" << endl;
+		return;
+	}
+
+	// loop through all the results and bind to the first we can
+	for(p = addrInfo; p != NULL; p = p->ai_next) 
+	{
+		if ((sockFd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) 
+			continue;
+		if (bind(sockFd, p->ai_addr, p->ai_addrlen) == -1) 
+		{
+			close(sockFd);
+			cout << "Error in SuncryptSocket Constructor: bind()" << endl;
+			perror("Errno Message");
+			continue;
+		}
+		break;
+	}
+
+	if (p == NULL)
+		cout << "Error in SuncryptSocket Constructor: failed to bind" << endl;
 	else
 	{
-		// loop through all the results and bind to the first we can
-		for(p = addrInfo; p != NULL; p = p->ai_next) 
-		{
-			if ((sockFd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) 
-				continue;
-			if (bind(sockFd, p->ai_addr, p->ai_addrlen) == -1) 
-			{
-				close(sockFd);
-				cout << "Error in SuncryptSocket Constructor: bind()" << endl;
-				perror("Errno Message");
-				continue;
-			}
-			break;
-		}
-
-		if (p == NULL)
-			cout << "Error in SuncryptSocket Constructor: failed to bind" << endl;
-		else
-		{
-			freeaddrinfo(addrInfo);
-			socketGood = true;
-		}
+		freeaddrinfo(addrInfo);
+		socketGood = true;
 	}
+	
 }
 
 /***********************************************************************************

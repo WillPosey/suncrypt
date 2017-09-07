@@ -66,7 +66,6 @@ int Sundec::Decrypt(int numParams, char** params)
      {
           if(sunSocket->Receive() != 0)
                return -1;
-          cout << "RECEIVED" << endl;
           sunSocket->GetRecvMsg((char*)cipherText, cipherTextLength);
      }
 
