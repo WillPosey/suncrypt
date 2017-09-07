@@ -37,18 +37,16 @@ int Sundec::Decrypt(int numParams, char** params)
           return parseResult;
      }
 
-     sunSocket = new SuncryptSocket(port);
-
-     /* Create and display the key */
-     if(!gcrypt.CreateKey(key, SUNGCRY_KEY_SIZE))
-     {
-          gcrypt.PrintError();
-          return -1;
-     }
-     gcrypt.PrintKeyHex(key);
-
      if(localMode)
      {
+          /* Create and display the key */
+          if(!gcrypt.CreateKey(key, SUNGCRY_KEY_SIZE))
+          {
+               gcrypt.PrintError();
+               return -1;
+          }
+          gcrypt.PrintKeyHex(key);
+
           /* Get Size of file */
           cipherTextLength = fOps.GetFileSize(inputFileName);
           plainTextLength = cipherTextLength;
@@ -65,9 +63,19 @@ int Sundec::Decrypt(int numParams, char** params)
      }
      else
      {
+          sunSocket = new SuncryptSocket(port);
           numBytes = sunSocket->Receive();
           if(numBytes < 0)
                return -1;
+
+          /* Create and display the key */
+          if(!gcrypt.CreateKey(key, SUNGCRY_KEY_SIZE))
+          {
+               gcrypt.PrintError();
+               return -1;
+          }
+          gcrypt.PrintKeyHex(key);
+
           cipherTextLength = numBytes;
           plainTextLength = cipherTextLength;
           cipherText = new unsigned char[cipherTextLength];
@@ -90,7 +98,7 @@ int Sundec::Decrypt(int numParams, char** params)
      }
 
      printf("Successfully received and decrypted %s (%lu bytes written).\n", outputFileName.c_str(), plainTextLength);
-     
+
      delete[] plainText;
      delete[] cipherText;
      return 0;
