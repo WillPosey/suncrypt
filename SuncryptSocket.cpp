@@ -1,5 +1,7 @@
 #include "SuncryptSocket.h"
 #include <arpa/inet.h>
+#include <netinet/in.h>
+#include <netdb.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -16,34 +18,46 @@ using std::copy;
 /***********************************************************************************
  *
  **********************************************************************************/
-SuncryptSocket::SuncryptSocket(unsigned int portNum)
-{
+SuncryptSocket::SuncryptSocket(const string portNum)
+{	
+	struct addrinfo hints, *addrInfo, *p;
 	recvBufferGood = false;
 	socketGood = false;
 	recvBufferLength = 0;
-
 	port = portNum;
 
-	struct sockaddr_in addr;
-	memset(&addr, 0, sizeof(addr));
+	memset(&hints, 0, sizeof hints);
+	hints.ai_family = AF_INET;
+	hints.ai_socktype = SOCK_DGRAM;
+	hints.ai_flags = AI_PASSIVE;
 
-	addr.sin_family = AF_INET;
-	addr.sin_port = port;
-	addr.sin_addr.s_addr = htonl(INADDR_ANY);
-
-	sockFd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-	if(sockFd == -1)
-	{
-		cout << "Error in SuncryptSocket Constructor: socket()" << endl;
-		perror("Errno Message");
-	}
-	else if(bind(sockFd, (struct sockaddr*)&addr, sizeof(addr)) == -1)
-	{
-		cout << "Error in SuncryptSocket Constructor: bind()" << endl;
-		perror("Errno Message");
-	}
+	if (getaddrinfo(NULL, port.c_str(), &hints, &addrInfo) != 0) 
+		cout << "Error in SuncryptSocket Constructor: getaddrinfo()" << endl;
 	else
-		socketGood = true;
+	{
+		// loop through all the results and bind to the first we can
+		for(p = addrInfo; p != NULL; p = p->ai_next) 
+		{
+			if ((sockFd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) 
+				continue;
+			if (bind(sockFd, p->ai_addr, p->ai_addrlen) == -1) 
+			{
+				close(sockFd);
+				cout << "Error in SuncryptSocket Constructor: bind()" << endl;
+				perror("Errno Message");
+				continue;
+			}
+			break;
+		}
+
+		if (p == NULL)
+			cout << "Error in SuncryptSocket Constructor: failed to bind" << endl;
+		else
+		{
+			freeaddrinfo(addrInfo);
+			socketGood = true;
+		}
+	}
 }
 
 /***********************************************************************************
@@ -51,7 +65,8 @@ SuncryptSocket::SuncryptSocket(unsigned int portNum)
  **********************************************************************************/
 SuncryptSocket::~SuncryptSocket()
 {
-	close(sockFd);
+	if(socketGood)
+		close(sockFd);
 }
 
 /***********************************************************************************
@@ -59,19 +74,23 @@ SuncryptSocket::~SuncryptSocket()
  **********************************************************************************/
 int SuncryptSocket::Send(const string destIP, const char* msg, size_t msgLength)
 {
+	if(!socketGood)
+		return -1;
+
 	int numBlks;
 	msgHeader_t msgHeader, recvMsgHeader;
 	char blk[BLK_SIZE];
 	struct sockaddr_in sendAddr, recvAddr;
 	socklen_t sendAddrLen, recvAddrLen;
+	char str[INET_ADDRSTRLEN];
 
 	memset(&sendAddr, 0, sizeof(sendAddr));
 	sendAddr.sin_family = AF_INET;
-	sendAddr.sin_port = port;
+	sendAddr.sin_port = htons(atoi(port.c_str()));
 	inet_pton(AF_INET, destIP.c_str(), &(sendAddr.sin_addr));
 
 	numBlks = msgLength / MAX_MSG_SIZE;
-	if(numBlks%MAX_MSG_SIZE || numBlks==0)
+	if(msgLength%MAX_MSG_SIZE)
 		numBlks++;
 
 	cout << endl << "NUM BLKS: " << numBlks << endl;
@@ -85,11 +104,16 @@ int SuncryptSocket::Send(const string destIP, const char* msg, size_t msgLength)
 		memset(blk, 0, MAX_MSG_SIZE);
 		if(i==(numBlks-1))
 		{
-			msgHeader.msgSize = numBlks%MAX_MSG_SIZE;
+			msgHeader.msgSize = msgLength%MAX_MSG_SIZE;
 			msgHeader.finalBlk = 1;
 		}
 		memcpy(blk, &msgHeader, sizeof(msgHeader));
 		memcpy(blk, msg+(i*MAX_MSG_SIZE), msgHeader.msgSize);
+
+
+		cout << endl << "Sending: total=" << msgHeader.msgSize+sizeof(msgHeader) << " msgSize=" << msgHeader.msgSize << " and msgHeaderSize=" << sizeof(msgHeader) << endl;
+		inet_ntop(AF_INET, &(sendAddr.sin_addr), str, INET_ADDRSTRLEN);
+		cout << "Sending to " << str << " on port " << sendAddr.sin_port << endl << endl; 
 
 		if(sendto(sockFd, blk, msgHeader.msgSize+sizeof(msgHeader), 0, (struct sockaddr*)&sendAddr, sizeof(sendAddr)) < 0)
 		{
@@ -121,6 +145,9 @@ int SuncryptSocket::Send(const string destIP, const char* msg, size_t msgLength)
  **********************************************************************************/
 int SuncryptSocket::Receive()
 {
+	if(!socketGood)
+		return -1;
+
 	if(recvBufferGood)
 	{
 		recvBuffer.clear();

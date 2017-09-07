@@ -22,7 +22,7 @@ typedef struct
 class SuncryptSocket
 {
 public:
-	SuncryptSocket(unsigned int portNum);
+	SuncryptSocket(const string portNum);
 	~SuncryptSocket();
 	int Send(const string destIP, const char* msg, size_t msgLength);
 	int Receive();
@@ -30,7 +30,7 @@ public:
 private:
 	int sockFd;
 	bool socketGood;
-	unsigned int port;
+	string port;
 	vector<char> recvBuffer;
 	unsigned int recvBufferLength;
 	bool recvBufferGood;

@@ -36,7 +36,7 @@ int Suncrypt::Encrypt(int numParams, char** params)
           return parseResult;
      }
 
-     sunSocket = new SuncryptSocket(atoi(port.c_str()));
+     sunSocket = new SuncryptSocket(port);
 
      /* Create and display the key */
      if(!gcrypt.CreateKey(key, SUNGCRY_KEY_SIZE))
