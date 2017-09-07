@@ -31,6 +31,8 @@ SuncryptSocket::SuncryptSocket(const string portNum)
 	hints.ai_socktype = SOCK_DGRAM;
 	hints.ai_flags = AI_PASSIVE;
 
+	cout << "PORT: " << port.c_str() << endl;
+
 	if (getaddrinfo(NULL, port.c_str(), &hints, &addrInfo) != 0) 
 	{
 		cout << "Error in SuncryptSocket Constructor: getaddrinfo()" << endl;

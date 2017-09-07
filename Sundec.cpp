@@ -92,7 +92,6 @@ int Sundec::Parse(int numParams, char** params)
 {
      struct stat buffer;
      int delimeter, length;
-     string port;  
      size_t index;
 
      /* check number of parameters */
