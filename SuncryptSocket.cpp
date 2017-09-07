@@ -227,9 +227,12 @@ void SuncryptSocket::PackHeader(char* dest, msgHeader_t header)
 	uint16_t msgSize_N = htons(header.msgSize);
 	uint8_t finalBlk_N = htons(header.finalBlk);
 
+	int msgOffset = sizeof(seqNum_N);
+	int finalOffset = msgOffset + sizeof(msgSize_N);
+
 	memcpy(dest, &seqNum_N, sizeof(seqNum_N));
-	memcpy(dest, &msgSize_N, sizeof(msgSize_N)); 
-	memcpy(dest, &finalBlk_N, sizeof(finalBlk_N)); 
+	memcpy(dest+msgOffset, &msgSize_N, sizeof(msgSize_N)); 
+	memcpy(dest+finalOffset, &finalBlk_N, sizeof(finalBlk_N)); 
 }
 
 /***********************************************************************************
