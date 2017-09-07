@@ -14,7 +14,7 @@ using std::vector;
 
 typedef struct 
 {
-	uint64_t seqNum;
+	uint32_t seqNum;
 	uint16_t msgSize;
 	uint8_t finalBlk;
 } msgHeader_t;
@@ -28,6 +28,9 @@ public:
 	int Receive();
 	void GetRecvMsg(char* buffer, size_t bufferLength);
 private:
+	void PackHeader(char* dest, msgHeader_t header);
+	void GetHeader(char* buffer, msgHeader_t* header);
+
 	int sockFd;
 	bool socketGood;
 	string port;

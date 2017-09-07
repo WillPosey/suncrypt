@@ -78,10 +78,12 @@ int Sundec::Decrypt(int numParams, char** params)
 
      /* Write the decrypted file */
      if(!fOps.WriteFile(outputFileName, plainText, plainTextLength))
+     {
+          cout << "Error writing decrypted file" << endl;
           return -1;
+     }
 
      printf("Successfully received and decrypted %s (%lu bytes written).\n", outputFileName.c_str(), plainTextLength);
-
      return 0;
 }
 

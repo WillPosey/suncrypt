@@ -31,8 +31,6 @@ SuncryptSocket::SuncryptSocket(const string portNum)
 	hints.ai_socktype = SOCK_DGRAM;
 	hints.ai_flags = AI_PASSIVE;
 
-	cout << "PORT: " << port.c_str() << endl;
-
 	if (getaddrinfo(NULL, port.c_str(), &hints, &addrInfo) != 0) 
 	{
 		cout << "Error in SuncryptSocket Constructor: getaddrinfo()" << endl;
@@ -86,7 +84,7 @@ int SuncryptSocket::Send(const string destIP, const char* msg, size_t msgLength)
 	char blk[BLK_SIZE];
 	struct sockaddr_in sendAddr, recvAddr;
 	socklen_t sendAddrLen, recvAddrLen;
-	char str[INET_ADDRSTRLEN];
+	char sendHeader[HEADER_SIZE];
 
 	memset(&sendAddr, 0, sizeof(sendAddr));
 	sendAddr.sin_family = AF_INET;
@@ -111,13 +109,11 @@ int SuncryptSocket::Send(const string destIP, const char* msg, size_t msgLength)
 			msgHeader.msgSize = msgLength%MAX_MSG_SIZE;
 			msgHeader.finalBlk = 1;
 		}
-		memcpy(blk, &msgHeader, sizeof(msgHeader));
+
+		PackHeader(blk, msgHeader);
 		memcpy(blk, msg+(i*MAX_MSG_SIZE), msgHeader.msgSize);
 
-
 		cout << endl << "Sending: total=" << msgHeader.msgSize+sizeof(msgHeader) << " msgSize=" << msgHeader.msgSize << " and msgHeaderSize=" << sizeof(msgHeader) << endl;
-		inet_ntop(AF_INET, &(sendAddr.sin_addr), str, INET_ADDRSTRLEN);
-		cout << "Sending to " << str << " on port " << sendAddr.sin_port << endl << endl; 
 
 		if(sendto(sockFd, blk, msgHeader.msgSize+sizeof(msgHeader), 0, (struct sockaddr*)&sendAddr, sizeof(sendAddr)) < 0)
 		{
@@ -190,8 +186,14 @@ int SuncryptSocket::Receive()
 			return -1;
 		}
 
-		memcpy(&msgHeader, blk, sizeof(msgHeader));
-		recvBuffer.insert(recvBuffer.end(), blk+sizeof(msgHeader), blk+sizeof(msgHeader)+msgHeader.msgSize);
+		GetHeader(blk, &msgHeader);
+		if(msgHeader.msgSize != numBytes-sizeof(msgHeader))
+		{
+			cout << "Error: SuncryptSocket::Receive()-->recvfrom() Partial Block Received" << endl;
+			cout << "Message Size should have been " << msgHeader.msgSize+sizeof(msgHeader) << " but was " << numBytes << endl;
+			return -1;
+		}
+		recvBuffer.insert(recvBuffer.end(), blk+sizeof(msgHeader), blk+numBytes+1);
 
 		/*
 		if(sendto(sockFd, &msgHeader, sizeof(msgHeader), 0, (struct sockaddr*)&senderAddr, senderAddrLen) < 0)
@@ -214,4 +216,39 @@ void SuncryptSocket::GetRecvMsg(char* buffer, size_t bufferLength)
 	int length = (recvBufferLength > bufferLength) ? bufferLength : recvBufferLength;
 	if(recvBufferGood)
 		copy_n(recvBuffer.begin(), length, buffer);
+}
+
+/***********************************************************************************
+ *
+ **********************************************************************************/
+void SuncryptSocket::PackHeader(char* dest, msgHeader_t header)
+{
+	uint32_t seqNum_N = htonl(header.seqNum);
+	uint16_t msgSize_N = htons(header.msgSize);
+	uint8_t finalBlk_N = htons(header.finalBlk);
+
+	memcpy(dest, &seqNum_N, sizeof(seqNum_N));
+	memcpy(dest, &msgSize_N, sizeof(msgSize_N)); 
+	memcpy(dest, &finalBlk_N, sizeof(finalBlk_N)); 
+}
+
+/***********************************************************************************
+ *
+ **********************************************************************************/
+void SuncryptSocket::GetHeader(char* buffer, msgHeader_t *header)
+{
+	uint32_t seqNum_N;
+	uint16_t msgSize_N;
+	uint8_t finalBlk_N;
+
+	int msgOffset = sizeof(seqNum_N);
+	int finalOffset = msgOffset + sizeof(msgSize_N);
+
+	memcpy(&seqNum_N, buffer, sizeof(seqNum_N));
+	memcpy(&msgSize_N, buffer+msgOffset, sizeof(msgSize_N));
+	memcpy(&finalBlk_N, buffer+finalOffset, sizeof(finalBlk_N));
+
+	header->seqNum = ntohl(seqNum_N);
+	header->msgSize = ntohs(msgSize_N);
+	header->finalBlk = ntohs(finalBlk_N);
 }
