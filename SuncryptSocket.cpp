@@ -9,6 +9,7 @@
 #include <iostream>
 #include <cstring>
 #include <algorithm>
+#include <sys/time.h>
 
 using std::string;
 using std::cout;
@@ -80,6 +81,7 @@ int SuncryptSocket::Send(const string destIP, const char* msg, size_t msgLength)
 		return -1;
 
 	int numBlks;
+	struct timeval ackTimeout;
 	msgHeader_t msgHeader, recvMsgHeader;
 	char sendBlk[BLK_SIZE];
 	char ack[HEADER_SIZE];
@@ -105,30 +107,40 @@ int SuncryptSocket::Send(const string destIP, const char* msg, size_t msgLength)
 	msgHeader.msgSize = MAX_MSG_SIZE;
 
 	inet_ntop(AF_INET, &(sendAddr.sin_addr), sentIP, INET_ADDRSTRLEN);
+	ackTimeout.tv_sec = 1;
+	ackTimeout.tv_usec = 0;
+	if(setsockopt(sockFd, SOL_SOCKET, SO_RCVTIMEO,&ackTimeout,sizeof(ackTimeout)) < 0)
+    {
+		cout << "Error: SuncryptSocket::Send()-->setsockopt() could not set timeout" << endl;
+		perror("Errno Message");
+		return -1;
+	}		
 
 	for(int i=0; i<numBlks; i++)
 	{
-		memset(sendBlk, 0, MAX_MSG_SIZE);
-		if(i==(numBlks-1))
-		{
-			msgHeader.msgSize = msgLength%MAX_MSG_SIZE;
-			msgHeader.finalBlk = 1;
-		}
-
-		PackHeader(sendBlk, msgHeader);
-		memcpy(sendBlk+HEADER_SIZE, msg+(i*MAX_MSG_SIZE), msgHeader.msgSize);
-
-		if(sendto(sockFd, sendBlk, msgHeader.msgSize+HEADER_SIZE, 0, (struct sockaddr*)&sendAddr, sendAddrLen) < 0)
-		{
-			cout << "Error: SuncryptSocket::Send()-->sendto()" << endl;
-			perror("Errno Message");
-			return -1;
-		}
-		
 		do
 		{
+			memset(sendBlk, 0, MAX_MSG_SIZE);
+			if(i==(numBlks-1))
+			{
+				msgHeader.msgSize = msgLength%MAX_MSG_SIZE;
+				msgHeader.finalBlk = 1;
+			}
+
+			PackHeader(sendBlk, msgHeader);
+			memcpy(sendBlk+HEADER_SIZE, msg+(i*MAX_MSG_SIZE), msgHeader.msgSize);
+
+			if(sendto(sockFd, sendBlk, msgHeader.msgSize+HEADER_SIZE, 0, (struct sockaddr*)&sendAddr, sendAddrLen) < 0)
+			{
+				cout << "Error: SuncryptSocket::Send()-->sendto()" << endl;
+				perror("Errno Message");
+				return -1;
+			}
+
 			if(recvfrom(sockFd, ack, HEADER_SIZE, 0, (struct sockaddr*)&recvAddr, &recvAddrLen) < 0)
 			{
+				if(errno == EAGAIN || errno == EWOULDBLOCK)
+					continue;
 				cout << "Error: SuncryptSocket::Send()-->recvfrom() could not receive ack" << endl;
 				perror("Errno Message");
 				return -1;
@@ -143,6 +155,15 @@ int SuncryptSocket::Send(const string destIP, const char* msg, size_t msgLength)
 
 		msgHeader.seqNum++;
 	}
+
+	ackTimeout.tv_sec = 0;
+	ackTimeout.tv_usec = 0;
+	if(setsockopt(sockFd, SOL_SOCKET, SO_RCVTIMEO,&ackTimeout,sizeof(ackTimeout)) < 0)
+    {
+		cout << "Error: SuncryptSocket::Send()-->setsockopt() could not remove timeout" << endl;
+		perror("Errno Message");
+	}	
+
 	return 0;
 }
 
@@ -169,6 +190,7 @@ int SuncryptSocket::Receive()
 	ssize_t numBytes;
 	char blk[BLK_SIZE];
 	char ack[HEADER_SIZE];
+	uint32_t nextSeqNum;
 
 	memset(&msgHeader, 0, sizeof(msgHeader));
 	firstRecv = true;
@@ -183,9 +205,18 @@ int SuncryptSocket::Receive()
 			return -1;
 		}
 
+		GetHeader(blk, &msgHeader);
+		if(msgHeader.msgSize != (numBytes-HEADER_SIZE))
+		{
+			cout << "Error: SuncryptSocket::Receive()-->recvfrom() Partial Block Received" << endl;
+			cout << "Message Size should have been " << msgHeader.msgSize+HEADER_SIZE << " but was " << numBytes << endl;
+			return -1;
+		}
+
 		inet_ntop(AF_INET, &(senderAddr.sin_addr), senderIP, INET_ADDRSTRLEN);
 		if(firstRecv)
 		{
+			nextSeqNum = msgHeader.seqNum+1;
 			originalSenderIP = senderIP;
 			firstRecv = false;
 		}
@@ -194,16 +225,16 @@ int SuncryptSocket::Receive()
 			cout << "Error: SuncryptSocket::Receive()-->recvfrom() different IPs original=" << originalSenderIP << " last=" << senderIP << endl;
 			return -1;
 		}
-
-		GetHeader(blk, &msgHeader);
-		if(msgHeader.msgSize != (numBytes-HEADER_SIZE))
+		else if(msgHeader.seqNum != nextSeqNum)
 		{
-			cout << "Error: SuncryptSocket::Receive()-->recvfrom() Partial Block Received" << endl;
-			cout << "Message Size should have been " << msgHeader.msgSize+HEADER_SIZE << " but was " << numBytes << endl;
-			return -1;
+			msgHeader.seqNum = nextSeqNum;
 		}
-		recvBuffer.insert(recvBuffer.end(), blk+HEADER_SIZE, blk+numBytes);
-		recvBufferLength = recvBuffer.size();
+		else
+		{
+			nextSeqNum = msgHeader.seqNum+1;
+			recvBuffer.insert(recvBuffer.end(), blk+HEADER_SIZE, blk+numBytes);
+			recvBufferLength = recvBuffer.size();
+		}
 
 		PackHeader(ack, msgHeader);
 		if(sendto(sockFd, ack, HEADER_SIZE, 0, (struct sockaddr*)&senderAddr, senderAddrLen) < 0)
