@@ -113,9 +113,9 @@ int SuncryptSocket::Send(const string destIP, const char* msg, size_t msgLength)
 		PackHeader(blk, msgHeader);
 		memcpy(blk, msg+(i*MAX_MSG_SIZE), msgHeader.msgSize);
 
-		cout << endl << "Sending: total=" << msgHeader.msgSize+sizeof(msgHeader) << " msgSize=" << msgHeader.msgSize << " and msgHeaderSize=" << sizeof(msgHeader) << endl;
+		cout << endl << "Sending: total=" << msgHeader.msgSize+HEADER_SIZE << " msgSize=" << msgHeader.msgSize << " and msgHeaderSize=" << HEADER_SIZE << endl;
 
-		if(sendto(sockFd, blk, msgHeader.msgSize+sizeof(msgHeader), 0, (struct sockaddr*)&sendAddr, sizeof(sendAddr)) < 0)
+		if(sendto(sockFd, blk, msgHeader.msgSize+HEADER_SIZE, 0, (struct sockaddr*)&sendAddr, sizeof(sendAddr)) < 0)
 		{
 			cout << "Error: SuncryptSocket::Send()-->sendto()" << endl;
 			perror("Errno Message");
@@ -168,7 +168,7 @@ int SuncryptSocket::Receive()
 	while(!msgHeader.finalBlk)
 	{
 		numBytes = recvfrom(sockFd, blk, BLK_SIZE, 0, (struct sockaddr*)&senderAddr, &senderAddrLen);
-		if(numBytes < 0 || numBytes < sizeof(msgHeader))
+		if(numBytes < 0 || numBytes < HEADER_SIZE)
 		{
 			cout << "Error: SuncryptSocket::Receive()-->recvfrom()" << endl;
 			perror("Errno Message");
@@ -187,16 +187,16 @@ int SuncryptSocket::Receive()
 		}
 
 		GetHeader(blk, &msgHeader);
-		if(msgHeader.msgSize != numBytes-sizeof(msgHeader))
+		if(msgHeader.msgSize != numBytes-HEADER_SIZE)
 		{
 			cout << "Error: SuncryptSocket::Receive()-->recvfrom() Partial Block Received" << endl;
-			cout << "Message Size should have been " << msgHeader.msgSize+sizeof(msgHeader) << " but was " << numBytes << endl;
+			cout << "Message Size should have been " << msgHeader.msgSize+HEADER_SIZE << " but was " << numBytes << endl;
 			return -1;
 		}
-		recvBuffer.insert(recvBuffer.end(), blk+sizeof(msgHeader), blk+numBytes+1);
+		recvBuffer.insert(recvBuffer.end(), blk+HEADER_SIZE, blk+numBytes+1);
 
 		/*
-		if(sendto(sockFd, &msgHeader, sizeof(msgHeader), 0, (struct sockaddr*)&senderAddr, senderAddrLen) < 0)
+		if(sendto(sockFd, &msgHeader, HEADER_SIZE, 0, (struct sockaddr*)&senderAddr, senderAddrLen) < 0)
 		{
 			cout << "Error: SuncryptSocket::Send()-->sendto()" << endl;
 			perror("Errno Message");

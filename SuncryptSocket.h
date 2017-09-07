@@ -6,7 +6,7 @@
 #include <string>
 
 #define MAX_MSG_SIZE 4096
-#define HEADER_SIZE sizeof(msgHeader_t)
+#define HEADER_SIZE sizeof(uint32_t)+sizeof(uint16_t)+sizeof(uint8_t)
 #define BLK_SIZE MAX_MSG_SIZE+HEADER_SIZE 
 
 using std::string;
