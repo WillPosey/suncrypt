@@ -97,6 +97,7 @@ int SuncryptSocket::Send(const string destIP, const char* msg, size_t msgLength)
 
 	cout << endl << "NUM BLKS: " << numBlks << endl;
 
+	memset(&msgHeader, 0, sizeof(msgHeader));
 	msgHeader.finalBlk = 0;
 	msgHeader.seqNum = 0;
 	msgHeader.msgSize = MAX_MSG_SIZE;
@@ -111,7 +112,7 @@ int SuncryptSocket::Send(const string destIP, const char* msg, size_t msgLength)
 		}
 
 		PackHeader(blk, msgHeader);
-		memcpy(blk, msg+(i*MAX_MSG_SIZE), msgHeader.msgSize);
+		memcpy(blk+HEADER_SIZE, msg+(i*MAX_MSG_SIZE), msgHeader.msgSize);
 
 		cout << endl << "Sending: total=" << msgHeader.msgSize+HEADER_SIZE << " msgSize=" << msgHeader.msgSize << " and msgHeaderSize=" << HEADER_SIZE << endl;
 
@@ -225,14 +226,23 @@ void SuncryptSocket::PackHeader(char* dest, msgHeader_t header)
 {
 	uint32_t seqNum_N = htonl(header.seqNum);
 	uint16_t msgSize_N = htons(header.msgSize);
-	uint8_t finalBlk_N = htons(header.finalBlk);
+	uint16_t finalBlk_N = htons(header.finalBlk);
 
 	int msgOffset = sizeof(seqNum_N);
 	int finalOffset = msgOffset + sizeof(msgSize_N);
 
 	memcpy(dest, &seqNum_N, sizeof(seqNum_N));
+	cout << "seqNum in host order: " << header.seqNum << " seqNum in network order: " << seqNum_N << endl;
 	memcpy(dest+msgOffset, &msgSize_N, sizeof(msgSize_N)); 
+	cout << "msgSize in host order: " << header.msgSize << " msgSize in network order: " << msgSize_N << endl;
 	memcpy(dest+finalOffset, &finalBlk_N, sizeof(finalBlk_N)); 
+	cout << "finalBlk in host order: " << header.finalBlk << " finalBlk in network order: " << finalBlk_N << endl;
+
+	printf("\n\n IN HEADER HEX: %08X %04X %04X\n\n", header.seqNum, header.msgSize, header.finalBlk);
+
+	printf("\n\n IN BUFFER HEX: ");
+	for(int i=0; i<HEADER_SIZE; i++)
+		printf("%02X ", (unsigned char)dest[i]);
 }
 
 /***********************************************************************************
@@ -242,7 +252,7 @@ void SuncryptSocket::GetHeader(char* buffer, msgHeader_t *header)
 {
 	uint32_t seqNum_N;
 	uint16_t msgSize_N;
-	uint8_t finalBlk_N;
+	uint16_t finalBlk_N;
 
 	int msgOffset = sizeof(seqNum_N);
 	int finalOffset = msgOffset + sizeof(msgSize_N);
