@@ -26,8 +26,8 @@ int Sundec::Decrypt(int numParams, char** params)
 {
      int parseResult;
      int numBytes;
-     unsigned char *plainText, *cipherText;
-     size_t plainTextLength, cipherTextLength;
+     unsigned char *plainText, *cipherText, *signedData;
+     size_t plainTextLength, cipherTextLength, signedDataLength;
 
      /* Parse input, check for correct parameters */
      parseResult = Parse(numParams, params);
@@ -48,17 +48,18 @@ int Sundec::Decrypt(int numParams, char** params)
           gcrypt.PrintKeyHex(key);
 
           /* Get Size of file */
-          cipherTextLength = fOps.GetFileSize(inputFileName);
-          plainTextLength = cipherTextLength;
+          signedDataLength = fOps.GetFileSize(inputFileName);
+          plainTextLength = cipherTextLength = signedDataLength - gcrypt.GetHMACLength();
           if(cipherTextLength < 0)
                return -1;
 
           /* Allocate memory */
           plainText = new unsigned char[plainTextLength];
           cipherText = new unsigned char[cipherTextLength];
+          signedData = new unsigned char[signedDataLength];
 
           /* Read the file */
-          if(!fOps.ReadFile(inputFileName, cipherText, cipherTextLength))
+          if(!fOps.ReadFile(inputFileName, signedData, signedDataLength))
                return -1;
      }
      else
@@ -78,11 +79,19 @@ int Sundec::Decrypt(int numParams, char** params)
           }
           gcrypt.PrintKeyHex(key);
 
-          cipherTextLength = numBytes;
-          plainTextLength = cipherTextLength;
-          cipherText = new unsigned char[cipherTextLength];
+          signedDataLength = numBytes;
+          plainTextLength = cipherTextLength = signedDataLength - gcrypt.GetHMACLength();
           plainText = new unsigned char[plainTextLength];
-          sunSocket->GetRecvMsg((char*)cipherText, cipherTextLength);
+          cipherText = new unsigned char[cipherTextLength];
+          signedData = new unsigned char[signedDataLength];
+          sunSocket->GetRecvMsg((char*)signedData, signedDataLength);
+     }
+
+     /* Check the HMAC signature */
+     if(!gcrypt.CheckHMAC(key, signedData, signedDataLength, cipherText, cipherTextLength))
+     {
+          gcrypt.PrintError();
+          return 62;
      }
 
      /* Decrypt the file */
@@ -103,6 +112,7 @@ int Sundec::Decrypt(int numParams, char** params)
 
      delete[] plainText;
      delete[] cipherText;
+     delete[] signedData;
      return 0;
 }
 

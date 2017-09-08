@@ -16,7 +16,7 @@ using std::filebuf;
 SunGcrypt::SunGcrypt()
 {
 	gcry_check_version(NULL);
-	handleOpen = false;
+	aesHandleOpen = false;
 }
 
 /****************************************************************************
@@ -54,18 +54,18 @@ bool SunGcrypt::CreateKey(string &key, size_t keyLength)
  ***************************************************************************/
 bool SunGcrypt::Encrypt(const string key, unsigned char* plainText, size_t plainTextLength, unsigned char* cipherText, size_t cipherTextLength)
 {
-	if(!OpenHandle())
+	if(!OpenAESHandle())
 		return false;
 
-	if(!SetKey(key))
+	if(!SetAESKey(key))
 		return false;
 
-	if(!SetIV())
+	if(!SetAESIV())
 		return false;
 
-	cout << endl << "PLAIN TEXT:" << endl << plainText << endl;
+	cout << endl << "PLAIN TEXT:" << endl << string((char*)plainText,plainTextLength) << endl;
 
-	errCode = gcry_cipher_encrypt(handle, cipherText, cipherTextLength, plainText, plainTextLength);
+	errCode = gcry_cipher_encrypt(aesHandle, cipherText, cipherTextLength, plainText, plainTextLength);
 
 	if(errCode)
 	{
@@ -73,7 +73,7 @@ bool SunGcrypt::Encrypt(const string key, unsigned char* plainText, size_t plain
 		return false;
 	}
 
-	CloseHandle();
+	CloseAESHandle();
 	return true;
 }
 
@@ -83,16 +83,16 @@ bool SunGcrypt::Encrypt(const string key, unsigned char* plainText, size_t plain
 bool SunGcrypt::Decrypt(const string key, unsigned char* cipherText, size_t cipherTextLength , unsigned char* plainText, size_t plainTextLength)
 {
 
-	if(!OpenHandle())
+	if(!OpenAESHandle())
 		return false;
 
-	if(!SetKey(key))
+	if(!SetAESKey(key))
 		return false;
 
-	if(!SetIV())
+	if(!SetAESIV())
 		return false;
 
-	errCode = gcry_cipher_decrypt(handle, plainText, plainTextLength, cipherText, cipherTextLength);
+	errCode = gcry_cipher_decrypt(aesHandle, plainText, plainTextLength, cipherText, cipherTextLength);
 
 	if(errCode)
 	{
@@ -100,9 +100,9 @@ bool SunGcrypt::Decrypt(const string key, unsigned char* cipherText, size_t ciph
 		return false;
 	}
 
-	cout << endl << "PLAIN TEXT:" << endl << plainText << endl;
+	cout << endl << "PLAIN TEXT:" << endl << string((char*)plainText, plainTextLength) << endl;
 
-	CloseHandle();
+	CloseAESHandle();
 	return true;
 }
 
@@ -128,15 +128,15 @@ void SunGcrypt::PrintError()
 /****************************************************************************
  *
  ***************************************************************************/
-bool SunGcrypt::OpenHandle()
+bool SunGcrypt::OpenAESHandle()
 {
-	if(!handleOpen)
+	if(!aesHandleOpen)
 	{
-		errCode = gcry_cipher_open(&handle, GCRY_CIPHER_AES128, GCRY_CIPHER_MODE_CBC, GCRY_CIPHER_CBC_CTS);
+		errCode = gcry_cipher_open(&aesHandle, GCRY_CIPHER_AES128, GCRY_CIPHER_MODE_CBC, GCRY_CIPHER_CBC_CTS);
 
 		if(errCode)
 		{
-			errMsg = "SunGcrypt::OpenHandle()";
+			errMsg = "SunGcrypt::OpenAESHandle()";
 			return false;
 		}
 		return true;
@@ -147,25 +147,25 @@ bool SunGcrypt::OpenHandle()
 /****************************************************************************
  *
  ***************************************************************************/
-void SunGcrypt::CloseHandle()
+void SunGcrypt::CloseAESHandle()
 {
-	if(handleOpen)
+	if(aesHandleOpen)
 	{
-		gcry_cipher_close(handle);
-		handleOpen = false;
+		gcry_cipher_close(aesHandle);
+		aesHandleOpen = false;
 	}
 }
 
 /****************************************************************************
  *
  ***************************************************************************/
-bool SunGcrypt::SetKey(const string key)
+bool SunGcrypt::SetAESKey(const string key)
 {
-	errCode = gcry_cipher_setkey(handle, key.c_str(), key.size());
+	errCode = gcry_cipher_setkey(aesHandle, key.c_str(), key.size());
 
 	if(errCode)
     {
-    	errMsg = "SunGcrypt::SetKey()";
+    	errMsg = "SunGcrypt::SetAESKey()";
     	return false;
     }
 
@@ -175,17 +175,17 @@ bool SunGcrypt::SetKey(const string key)
 /****************************************************************************
  *
  ***************************************************************************/
-bool SunGcrypt::SetIV()
+bool SunGcrypt::SetAESIV()
 {
 	unsigned char iv[SUNGCRY_BLK_SIZE];
 	uint16_t ivVal = SUNGCRY_IV;
 	memcpy(iv, &ivVal, sizeof(ivVal));
 
-	errCode = gcry_cipher_setiv(handle, iv, SUNGCRY_BLK_SIZE);
+	errCode = gcry_cipher_setiv(aesHandle, iv, SUNGCRY_BLK_SIZE);
 
 	if(errCode)
     {
-    	errMsg = "SunGcrypt::SetIV()";
+    	errMsg = "SunGcrypt::SetAESIV()";
     	return false;
     }
 	return true;
@@ -207,4 +207,147 @@ size_t SunGcrypt::DecimalToOctal(unsigned int decimal)
 	}
 
 	return octal;
+}
+
+/****************************************************************************
+ *
+ ***************************************************************************/
+bool SunGcrypt::AppendHMAC(const string key, unsigned char* data, unsigned int dataLength, unsigned char* signedData, unsigned int signedDataLength)
+{
+	unsigned int hmacLength = GetHMACLength();
+	if(signedDataLength < dataLength+hmacLength)
+	{
+		cout << "Error SunGcrypt::AppendHMAC() signed data buffer too small" << endl;
+		return false;
+	}
+
+	unsigned char hmac[hmacLength];
+
+	if(!OpenHMACHandle())
+		return false;
+
+	if(!SetHMACKey(key))
+		return false;
+
+	if(!WriteHMAC(data, dataLength))
+		return false;
+
+	if(!ReadHMAC(hmac,(size_t*)&hmacLength))
+		return false;
+
+	CloseHMACHandle();
+	memcpy(signedData, data, dataLength);
+	memcpy(signedData+dataLength, hmac, hmacLength);
+	return true;
+}
+
+/****************************************************************************
+ *
+ ***************************************************************************/
+bool SunGcrypt::CheckHMAC(const string key, unsigned char* signedData, unsigned int signedDataLength, unsigned char* cipherText, unsigned int cipherTextLength)
+{
+	unsigned int hmacLength = GetHMACLength();
+	unsigned char hmac[hmacLength];
+
+	if(!OpenHMACHandle())
+		return false;
+
+	if(!SetHMACKey(key))
+		return false;
+
+	if(!WriteHMAC(signedData, signedDataLength-hmacLength))
+		return false;
+
+	if(!VerifyHMAC(signedData+(signedDataLength-hmacLength),hmacLength))
+		return false;
+
+	CloseHMACHandle();
+	memcpy(cipherText, signedData, signedDataLength-hmacLength);
+	return true;
+}
+
+/****************************************************************************
+ *
+ ***************************************************************************/
+bool SunGcrypt::OpenHMACHandle()
+{
+	errCode = gcry_mac_open(&hmacHandle, GCRY_MAC_HMAC_SHA512, 0, NULL);
+	if(errCode)
+	{
+		errMsg = "SunGcrypt::OpenHMACHandle()";
+		return false;
+	}
+	return true;
+}
+
+/****************************************************************************
+ *
+ ***************************************************************************/
+bool SunGcrypt::SetHMACKey(const string key)
+{
+	errCode = gcry_mac_setkey(hmacHandle, key.c_str(), key.size());
+	if(errCode)
+	{
+		errMsg = "SunGcrypt::SetHMACKey()";
+		return false;
+	}
+	return true;
+}
+
+/****************************************************************************
+ *
+ ***************************************************************************/
+unsigned int SunGcrypt::GetHMACLength()
+{
+	return gcry_mac_get_algo_maclen(GCRY_MAC_HMAC_SHA512);
+}
+
+/****************************************************************************
+ *
+ ***************************************************************************/
+bool SunGcrypt::WriteHMAC(const unsigned char* dataBuffer, size_t bufferLength)
+{
+	errCode = gcry_mac_write(hmacHandle, dataBuffer, bufferLength);
+	if(errCode)
+	{
+		errMsg = "SunGcrypt::SetHMACKey()";
+		return false;
+	}
+	return true;
+}
+
+/****************************************************************************
+ *
+ ***************************************************************************/
+bool SunGcrypt::ReadHMAC(unsigned char* hmacBuffer, size_t* bufferLength)
+{
+	errCode = gcry_mac_read(hmacHandle, hmacBuffer, bufferLength);
+	if(errCode)
+	{
+		errMsg = "SunGcrypt::ReadHMAC()";
+		return false;
+	}
+	return true;
+}
+
+/****************************************************************************
+ *
+ ***************************************************************************/
+bool SunGcrypt::VerifyHMAC(const unsigned char* hmac, size_t hmacLength)
+{
+	errCode = gcry_mac_verify(hmacHandle, hmac, hmacLength);
+	if(errCode)
+	{
+		errMsg = "SunGcrypt::VerifyHMAC() HMAC Verification Failed";
+		return false;
+	}
+	return true;
+}
+
+/****************************************************************************
+ *
+ ***************************************************************************/
+void SunGcrypt::CloseHMACHandle()
+{
+	gcry_mac_close(hmacHandle);
 }

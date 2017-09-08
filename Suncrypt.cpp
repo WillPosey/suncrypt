@@ -25,8 +25,8 @@ int main(int argc, char** argv)
 int Suncrypt::Encrypt(int numParams, char** params)
 {
      int parseResult;
-     unsigned char *plainText, *cipherText;
-     size_t plainTextLength, cipherTextLength;
+     unsigned char *plainText, *cipherText, *signedData;
+     size_t plainTextLength, cipherTextLength, signedDataLength;
 
      /* Parse input, check for correct parameters */
      parseResult = Parse(numParams, params);
@@ -67,24 +67,34 @@ int Suncrypt::Encrypt(int numParams, char** params)
           return -1;
      }
 
+     /* Sign the data */
+     signedDataLength = cipherTextLength + gcrypt.GetHMACLength();
+     signedData = new unsigned char[signedDataLength];
+     if(!gcrypt.AppendHMAC(key, cipherText, cipherTextLength, signedData, signedDataLength))
+     {
+          gcrypt.PrintError();
+          return -1;
+     }
+
      /* Write the file, or transmit */
      if(localMode)
      {
-          if(!fOps.WriteFile(outputFileName, cipherText, cipherTextLength))
+          if(!fOps.WriteFile(outputFileName, signedData, signedDataLength))
                return -1;
-          printf("Successfully encrypted %s to %s (%lu bytes written).\n", inputFileName.c_str(), outputFileName.c_str(), cipherTextLength);
+          printf("Successfully encrypted %s to %s (%lu bytes written).\n", inputFileName.c_str(), outputFileName.c_str(), signedDataLength);
      }
      else 
      {
-          printf("Successfully encrypted %s to %s (%lu bytes written).\n", inputFileName.c_str(), outputFileName.c_str(), cipherTextLength);
+          printf("Successfully encrypted %s to %s (%lu bytes written).\n", inputFileName.c_str(), outputFileName.c_str(), signedDataLength);
           cout << "Transmitting to " << ipAddr << ":" << port << endl;
-          if(sunSocket->Send(ipAddr, (char*)cipherText, cipherTextLength) != 0)
+          if(sunSocket->Send(ipAddr, (char*)signedData, signedDataLength) != 0)
                return -1;
           cout << "Successfully received" << endl;
      }
 
      delete[] plainText;
      delete[] cipherText;
+     delete[] signedData;
 
      return 0;
 }

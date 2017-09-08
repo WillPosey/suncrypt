@@ -19,7 +19,7 @@ $(TARGET_DEC): $(OBJ_DEC)
 	g++ $(FLAGS) $(OBJ_DEC) -o $@ $(LINK)
 
 %.o: %.cpp
-	g++ -c $(FLAGS) $< -o $@
+	g++ -c $(FLAGS) $< -o $@ 
 
 .PHONY: clean
 
