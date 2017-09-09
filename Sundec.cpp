@@ -26,8 +26,8 @@ int Sundec::Decrypt(int numParams, char** params)
 {
      int parseResult;
      int numBytes;
-     unsigned char *plainText, *cipherText, *signedData;
-     size_t plainTextLength, cipherTextLength, signedDataLength;
+     unsigned char *buffer, *signedData;
+     size_t bufferLength, signedDataLength;
 
      /* Parse input, check for correct parameters */
      parseResult = Parse(numParams, params);
@@ -49,15 +49,13 @@ int Sundec::Decrypt(int numParams, char** params)
 
           /* Get Size of file */
           signedDataLength = fOps.GetFileSize(inputFileName);
-          if(signedDataLength < 0)
+          bufferLength = signedDataLength - gcrypt.GetHMACLength();
+          if(bufferLength < 0)
                return -1;
-          cipherTextLength = signedDataLength - gcrypt.GetHMACLength();
-          plainTextLength = gcrypt.GetDecryptedLength(cipherTextLength);
 
           /* Allocate memory */
+          buffer = new unsigned char[bufferLength];
           signedData = new unsigned char[signedDataLength];
-          cipherText = new unsigned char[cipherTextLength];
-          plainText = new unsigned char[plainTextLength];
 
           /* Read the file */
           if(!fOps.ReadFile(inputFileName, signedData, signedDataLength))
@@ -81,39 +79,36 @@ int Sundec::Decrypt(int numParams, char** params)
           gcrypt.PrintKeyHex(key);
 
           signedDataLength = numBytes;
-          cipherTextLength = signedDataLength - gcrypt.GetHMACLength();
-          plainTextLength = gcrypt.GetDecryptedLength(cipherTextLength);
+          bufferLength = signedDataLength - gcrypt.GetHMACLength();
+          buffer = new unsigned char[bufferLength];
           signedData = new unsigned char[signedDataLength];
-          cipherText = new unsigned char[cipherTextLength];
-          plainText = new unsigned char[plainTextLength];
           sunSocket->GetRecvMsg((char*)signedData, signedDataLength);
      }
 
      /* Check the HMAC signature */
-     if(!gcrypt.CheckHMAC(key, signedData, signedDataLength, cipherText, cipherTextLength))
+     if(!gcrypt.CheckHMAC(key, signedData, signedDataLength, buffer, bufferLength))
      {
           gcrypt.PrintError();
           return 62;
      }
 
      /* Decrypt the file */
-     if(!gcrypt.Decrypt(key, cipherText, cipherTextLength, plainText, plainTextLength))
+     if(!gcrypt.Decrypt(key, buffer, bufferLength))
      {
           gcrypt.PrintError();
           return -1;
      }
 
      /* Write the decrypted file */
-     if(!fOps.WriteFile(outputFileName, plainText, plainTextLength))
+     if(!fOps.WriteFile(outputFileName, buffer, bufferLength))
      {
           cout << "Error writing decrypted file" << endl;
           return -1;
      }
 
-     printf("Successfully received and decrypted %s (%lu bytes written).\n", outputFileName.c_str(), plainTextLength);
+     printf("Successfully received and decrypted %s (%lu bytes written).\n", outputFileName.c_str(), bufferLength);
 
-     delete[] plainText;
-     delete[] cipherText;
+     delete[] buffer;
      delete[] signedData;
      return 0;
 }

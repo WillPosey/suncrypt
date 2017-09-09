@@ -25,8 +25,8 @@ int main(int argc, char** argv)
 int Suncrypt::Encrypt(int numParams, char** params)
 {
      int parseResult;
-     unsigned char *plainText, *cipherText, *signedData;
-     size_t plainTextLength, cipherTextLength, signedDataLength;
+     unsigned char *buffer, *signedData;
+     size_t bufferLength, signedDataLength;
 
      /* Parse input, check for correct parameters */
      parseResult = Parse(numParams, params);
@@ -47,30 +47,28 @@ int Suncrypt::Encrypt(int numParams, char** params)
      gcrypt.PrintKeyHex(key);
 
      /* Get Size of file */
-     plainTextLength = fOps.GetFileSize(inputFileName);
-     if(plainTextLength < 0)
+     bufferLength = fOps.GetFileSize(inputFileName);
+     if(bufferLength < 0)
           return -1;
-     cipherTextLength = gcrypt.GetEncryptedLength(plainTextLength);
 
      /* Allocate memory */
-     plainText = new unsigned char[plainTextLength];
-     cipherText = new unsigned char[cipherTextLength];
+     buffer = new unsigned char[bufferLength];
 
      /* Read the input file */
-     if(!fOps.ReadFile(inputFileName, plainText, plainTextLength))
+     if(!fOps.ReadFile(inputFileName, buffer, bufferLength))
           return -1;
 
      /* Encrypt the file */
-     if(!gcrypt.Encrypt(key, plainText, plainTextLength, cipherText, cipherTextLength))
+     if(!gcrypt.Encrypt(key, buffer, bufferLength))
      {
           gcrypt.PrintError();
           return -1;
      }
 
      /* Sign the data */
-     signedDataLength = cipherTextLength + gcrypt.GetHMACLength();
+     signedDataLength = bufferLength + gcrypt.GetHMACLength();
      signedData = new unsigned char[signedDataLength];
-     if(!gcrypt.AppendHMAC(key, cipherText, cipherTextLength, signedData, signedDataLength))
+     if(!gcrypt.AppendHMAC(key, buffer, bufferLength, signedData, signedDataLength))
      {
           gcrypt.PrintError();
           return -1;
@@ -92,9 +90,9 @@ int Suncrypt::Encrypt(int numParams, char** params)
           cout << "Successfully received" << endl;
      }
 
-     delete[] plainText;
-     delete[] cipherText;
+     delete[] buffer;
      delete[] signedData;
+
      return 0;
 }
 
