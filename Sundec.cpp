@@ -49,14 +49,15 @@ int Sundec::Decrypt(int numParams, char** params)
 
           /* Get Size of file */
           signedDataLength = fOps.GetFileSize(inputFileName);
-          plainTextLength = cipherTextLength = signedDataLength - gcrypt.GetHMACLength();
-          if(cipherTextLength < 0)
+          if(signedDataLength < 0)
                return -1;
+          cipherTextLength = signedDataLength - gcrypt.GetHMACLength();
+          plainTextLength = gcrypt.GetDecryptedLength(cipherTextLength);
 
           /* Allocate memory */
-          plainText = new unsigned char[plainTextLength];
-          cipherText = new unsigned char[cipherTextLength];
           signedData = new unsigned char[signedDataLength];
+          cipherText = new unsigned char[cipherTextLength];
+          plainText = new unsigned char[plainTextLength];
 
           /* Read the file */
           if(!fOps.ReadFile(inputFileName, signedData, signedDataLength))
@@ -80,10 +81,11 @@ int Sundec::Decrypt(int numParams, char** params)
           gcrypt.PrintKeyHex(key);
 
           signedDataLength = numBytes;
-          plainTextLength = cipherTextLength = signedDataLength - gcrypt.GetHMACLength();
-          plainText = new unsigned char[plainTextLength];
-          cipherText = new unsigned char[cipherTextLength];
+          cipherTextLength = signedDataLength - gcrypt.GetHMACLength();
+          plainTextLength = gcrypt.GetDecryptedLength(cipherTextLength);
           signedData = new unsigned char[signedDataLength];
+          cipherText = new unsigned char[cipherTextLength];
+          plainText = new unsigned char[plainTextLength];
           sunSocket->GetRecvMsg((char*)signedData, signedDataLength);
      }
 

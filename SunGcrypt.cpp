@@ -52,8 +52,32 @@ bool SunGcrypt::CreateKey(string &key, size_t keyLength)
 /****************************************************************************
  *
  ***************************************************************************/
-bool SunGcrypt::Encrypt(const string key, unsigned char* plainText, size_t plainTextLength, unsigned char* cipherText, size_t cipherTextLength)
+unsigned int SunGcrypt::GetEncryptedLength(unsigned int plainTextLength)
 {
+	return plainTextLength + SUNGCRY_BLK_SIZE;
+}
+
+/****************************************************************************
+ *
+ ***************************************************************************/
+unsigned int SunGcrypt::GetDecryptedLength(unsigned int cipherTextLength)
+{
+	return cipherTextLength - SUNGCRY_BLK_SIZE;
+}
+
+/****************************************************************************
+ *
+ ***************************************************************************/
+bool SunGcrypt::Encrypt(const string key, unsigned char* plainText, size_t plainTextLength, unsigned char* cipherText, unsigned int cipherTextLength)
+{
+	unsigned int bufferLength = GetEncryptedLength(plainTextLength);
+	if(cipherTextLength < bufferLength)
+	{
+		errMsg = "";
+		cout << "SunGcrypt::Encrypt() cipher text buffer too small" << endl;
+		return false;
+	}
+
 	if(!OpenAESHandle())
 		return false;
 
@@ -64,15 +88,20 @@ bool SunGcrypt::Encrypt(const string key, unsigned char* plainText, size_t plain
 		return false;
 
 	cout << endl << "PLAIN TEXT:" << endl << string((char*)plainText,plainTextLength) << endl;
+	char buffer[bufferLength];
+	memcpy(buffer, plainText, plainTextLength);
+	unsigned char iv[SUNGCRY_BLK_SIZE];
+	GetIV(iv , SUNGCRY_BLK_SIZE);
+	memcpy(buffer+plainTextLength, iv, SUNGCRY_BLK_SIZE);
 
-	errCode = gcry_cipher_encrypt(aesHandle, cipherText, cipherTextLength, plainText, plainTextLength);
-
+	errCode = gcry_cipher_encrypt(aesHandle, buffer, bufferLength, NULL, 0);
 	if(errCode)
 	{
 		errMsg = "SunGcrypt::Encrypt()";
 		return false;
 	}
 
+	memcpy(cipherText, buffer, bufferLength);
 	CloseAESHandle();
 	return true;
 }
@@ -80,8 +109,15 @@ bool SunGcrypt::Encrypt(const string key, unsigned char* plainText, size_t plain
 /****************************************************************************
  *
  ***************************************************************************/
-bool SunGcrypt::Decrypt(const string key, unsigned char* cipherText, size_t cipherTextLength , unsigned char* plainText, size_t plainTextLength)
+bool SunGcrypt::Decrypt(const string key, unsigned char* cipherText, unsigned int cipherTextLength, unsigned char* plainText, size_t plainTextLength)
 {
+	unsigned int reqbufferLength = GetDecryptedLength(cipherTextLength);
+	if(plainTextLength < reqbufferLength)
+	{
+		errMsg = "";
+		cout << "SunGcrypt::Decrypt() plain text buffer is too small" << endl;
+		return false;
+	}
 
 	if(!OpenAESHandle())
 		return false;
@@ -92,16 +128,18 @@ bool SunGcrypt::Decrypt(const string key, unsigned char* cipherText, size_t ciph
 	if(!SetAESIV())
 		return false;
 
-	errCode = gcry_cipher_decrypt(aesHandle, plainText, plainTextLength, cipherText, cipherTextLength);
+	unsigned char buffer[cipherTextLength];
+	memcpy(buffer, cipherText, cipherTextLength);
 
+	errCode = gcry_cipher_decrypt(aesHandle, buffer, cipherTextLength, NULL, 0);
 	if(errCode)
 	{
 		errMsg = "SunGcrypt::Decrypt()";
 		return false;
 	}
 
+	memcpy(plainText, buffer, plainTextLength);
 	cout << endl << "PLAIN TEXT:" << endl << string((char*)plainText, plainTextLength) << endl;
-
 	CloseAESHandle();
 	return true;
 }
@@ -122,6 +160,8 @@ void SunGcrypt::PrintKeyHex(const string key)
  ***************************************************************************/
 void SunGcrypt::PrintError()
 {
+	if(errMsg.compare("") == 0)
+		return;
 	cout << errMsg << ": [source] " << gcry_strsource(errCode) << " [error] " << gcry_strerror(errCode) << endl;
 }
 
@@ -178,8 +218,7 @@ bool SunGcrypt::SetAESKey(const string key)
 bool SunGcrypt::SetAESIV()
 {
 	unsigned char iv[SUNGCRY_BLK_SIZE];
-	uint16_t ivVal = SUNGCRY_IV;
-	memcpy(iv, &ivVal, sizeof(ivVal));
+	GetIV(iv , SUNGCRY_BLK_SIZE);
 
 	errCode = gcry_cipher_setiv(aesHandle, iv, SUNGCRY_BLK_SIZE);
 
@@ -188,7 +227,21 @@ bool SunGcrypt::SetAESIV()
     	errMsg = "SunGcrypt::SetAESIV()";
     	return false;
     }
+    
 	return true;
+}
+
+/****************************************************************************
+ *
+ ***************************************************************************/
+void SunGcrypt::GetIV(unsigned char* ivBuffer, unsigned int ivBufferLength)
+{
+	int16_t ivVal = SUNGCRY_IV;
+	if(ivBuffer != NULL && ivBufferLength > sizeof(ivVal))
+	{
+		memset(ivBuffer, 0, ivBufferLength);
+		memcpy(ivBuffer, &ivVal, sizeof(ivVal));
+	}
 }
 
 /****************************************************************************

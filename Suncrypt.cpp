@@ -48,9 +48,9 @@ int Suncrypt::Encrypt(int numParams, char** params)
 
      /* Get Size of file */
      plainTextLength = fOps.GetFileSize(inputFileName);
-     cipherTextLength = plainTextLength;
      if(plainTextLength < 0)
           return -1;
+     cipherTextLength = gcrypt.GetEncryptedLength(plainTextLength);
 
      /* Allocate memory */
      plainText = new unsigned char[plainTextLength];
@@ -95,7 +95,6 @@ int Suncrypt::Encrypt(int numParams, char** params)
      delete[] plainText;
      delete[] cipherText;
      delete[] signedData;
-
      return 0;
 }
 

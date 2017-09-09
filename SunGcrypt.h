@@ -20,19 +20,22 @@ class SunGcrypt
 public:
 	SunGcrypt();
 	bool CreateKey(string &key, size_t keyLength);
-	bool Encrypt(const string key, unsigned char* plainText, size_t plainTextLength, unsigned char* cipherText, size_t cipherTextLength);
-	bool Decrypt(const string key, unsigned char* cipherText, size_t cipherTextLength, unsigned char* plainText, size_t plainTextLength);
+	bool Encrypt(const string key, unsigned char* plainText, size_t plainTextLength, unsigned char* cipherText, unsigned int cipherTextLength);
+	bool Decrypt(const string key, unsigned char* cipherText, unsigned int cipherTextLength, unsigned char* plainText, size_t plainTextLength);
 	bool AppendHMAC(const string key, unsigned char* data, unsigned int dataLength, unsigned char* signedData, unsigned int signedDataLength);
 	bool CheckHMAC(const string key, unsigned char* signedData, unsigned int signedDataLength, unsigned char* cipherText, unsigned int cipherTextLength);
 	unsigned int GetHMACLength();
 	void PrintError();
 	void PrintKeyHex(const string key);
+	unsigned int GetEncryptedLength(unsigned int plainTextLength);
+	unsigned int GetDecryptedLength(unsigned int cipherTextLength);
 
 private:
 	bool OpenAESHandle();
 	void CloseAESHandle();
 	bool SetAESKey(const string key);
 	bool SetAESIV();
+	void GetIV(unsigned char* ivBuffer, unsigned int ivBufferLength);
 
 	bool OpenHMACHandle();
 	bool SetHMACKey(const string key);
