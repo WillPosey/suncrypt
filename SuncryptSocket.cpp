@@ -1,3 +1,12 @@
+/************************************************************************************************************
+*	Author:			William Posey
+*	Course: 		University of Florida, CNT 5410
+*	Semester:		Fall 2017
+*	Project:		Assignment 2, Suncrypt
+*	File:			SuncryptSocket.cpp
+*	Description:	This file contains definitions for methods of the SuncryptSocket class, which is used to
+*					implement C UDP socket functionality
+************************************************************************************************************/
 #include "SuncryptSocket.h"
 #include <arpa/inet.h>
 #include <netinet/in.h>
@@ -16,9 +25,14 @@ using std::cout;
 using std::endl;
 using std::copy;
 
-/***********************************************************************************
- *
- **********************************************************************************/
+/************************************************************************************************************
+ *	@params:
+ *				const string portNum: port number on which the socket should communicate through
+ *	@return:
+ *				n/a
+ *	@desc:
+ *				creates and binds a socket to any system IP address and the specified port
+ ***********************************************************************************************************/
 SuncryptSocket::SuncryptSocket(const string portNum)
 {	
 	struct addrinfo hints, *addrInfo, *p;
@@ -38,7 +52,6 @@ SuncryptSocket::SuncryptSocket(const string portNum)
 		return;
 	}
 
-	// loop through all the results and bind to the first we can
 	for(p = addrInfo; p != NULL; p = p->ai_next) 
 	{
 		if ((sockFd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) 
@@ -63,18 +76,33 @@ SuncryptSocket::SuncryptSocket(const string portNum)
 	
 }
 
-/***********************************************************************************
- *
- **********************************************************************************/
+/************************************************************************************************************
+ *	@params:
+ *				n/a
+ *	@return:
+ *				n/a
+ *	@desc:
+ *				closes the socket
+ ***********************************************************************************************************/
 SuncryptSocket::~SuncryptSocket()
 {
 	if(socketGood)
 		close(sockFd);
 }
 
-/***********************************************************************************
- *
- **********************************************************************************/
+/************************************************************************************************************
+ *	@params:
+ *				const string destIP: desintation IP address (IPV4)
+ *				const char* msg: buffer containing message to send
+ *				size_t msgLength: length of message
+ *	@return:
+ *				0: succecss
+ *				-1: error
+ *	@desc:
+ *				breaks the message into blocks, and sends one block at a time, waiting for an
+ *				acknowledgement from the receiver for each block
+ *				ignores any communication from IP not equivalent to receiver IP
+ ***********************************************************************************************************/
 int SuncryptSocket::Send(const string destIP, const char* msg, size_t msgLength)
 {
 	if(!socketGood)
@@ -167,9 +195,17 @@ int SuncryptSocket::Send(const string destIP, const char* msg, size_t msgLength)
 	return 0;
 }
 
-/***********************************************************************************
- *
- **********************************************************************************/
+/************************************************************************************************************
+ *	@params:
+ *				n/a
+ *	@return:
+ *				-1: error
+ *				otherwise: nmber of bytes received
+ *	@desc:
+ *				blocks and waits to receive an entire message, broken into blocks, into an internal buffer
+ *				sends an ack for every block received, and receives blocks until final block flag set in
+ *				the message header
+ ***********************************************************************************************************/
 int SuncryptSocket::Receive()
 {
 	if(!socketGood)
@@ -252,9 +288,15 @@ int SuncryptSocket::Receive()
 	return recvBuffer.size();
 }
 
-/***********************************************************************************
- *
- **********************************************************************************/
+/************************************************************************************************************
+ *	@params:
+ *				char* buffer: buffer to store received message
+ *				size_t bufferLength: length of buffer
+ *	@return:
+ *				n/a
+ *	@desc:
+ *				copies the contents of the internal buffer containing the received message into the buffer
+ ***********************************************************************************************************/
 void SuncryptSocket::GetRecvMsg(char* buffer, size_t bufferLength)
 {
 	int length = (recvBufferLength > bufferLength) ? bufferLength : recvBufferLength;
@@ -262,9 +304,16 @@ void SuncryptSocket::GetRecvMsg(char* buffer, size_t bufferLength)
 		copy_n(recvBuffer.begin(), length, buffer);
 }
 
-/***********************************************************************************
- *
- **********************************************************************************/
+/************************************************************************************************************
+ *	@params:
+ *				char* dest: destination buffer
+ *				msgHeader_t header: message header holding current values
+ *	@return:
+ *				n/a
+ *	@desc:
+ *				rather than send the header struct in the message, individual members of the header are 
+ *				copied in network order to the destination buffer
+ ***********************************************************************************************************/
 void SuncryptSocket::PackHeader(char* dest, msgHeader_t header)
 {
 	uint32_t seqNum_N = htonl(header.seqNum);
@@ -279,9 +328,15 @@ void SuncryptSocket::PackHeader(char* dest, msgHeader_t header)
 	memcpy(dest+finalOffset, &finalBlk_N, sizeof(finalBlk_N)); 
 }
 
-/***********************************************************************************
- *
- **********************************************************************************/
+/************************************************************************************************************
+ *	@params:
+ *				char* buffer: buffer containing received message and header
+ *				msgHeader_t* header: pointer to message header structure to store values
+ *	@return:
+ *				n/a
+ *	@desc:
+ *				retrieves the header information from the received message into the message header struct
+ ***********************************************************************************************************/
 void SuncryptSocket::GetHeader(char* buffer, msgHeader_t *header)
 {
 	uint32_t seqNum_N;

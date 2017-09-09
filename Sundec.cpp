@@ -1,3 +1,13 @@
+/************************************************************************************************************
+*    Author:        William Posey
+*    Course:        University of Florida, CNT 5410
+*    Semester:      Fall 2017
+*    Project:       Assignment 2, Suncrypt
+*    File:          Sundec.cpp
+*    Description:   This file contains the definitions for the methods of the Sundec class, which is used to
+*                   implement decryption of an encrypted file either stored locally, or received over network
+*                   communication
+************************************************************************************************************/
 #include "Sundec.h"
 #include <iostream>
 #include <string>
@@ -11,7 +21,7 @@ using std::endl;
 using std::string;
 
 /**************************************************
- *
+ *                  Main Method
  **************************************************/
 int main(int argc, char** argv)
 {
@@ -19,15 +29,25 @@ int main(int argc, char** argv)
      return s.Decrypt(argc, argv);
 }
 
-/**************************************************
- *
- **************************************************/
+/************************************************************************************************************
+ *   @params:
+ *			int numParams: number of input parameters, passed to Parse()
+ *			char** params: array of input parameters, passed to Parse()
+ *   @return:
+ * 			0: success
+ *			33: output file exists
+ *			62: Invalid HMAC signature
+ *			-1: other error
+ *   @desc:
+ *			parses the input parameters, then decrypts the input or transmitted file
+ *			checks to make sure the output file does not exist, and that the HMAC signature is valid
+ ***********************************************************************************************************/
 int Sundec::Decrypt(int numParams, char** params)
 {
      int parseResult;
      int numBytes;
-     unsigned char *buffer, *signedData;
-     size_t bufferLength, signedDataLength;
+     unsigned char *plainText, *cipherText, *signedData;
+     size_t plainTextLength, cipherTextLength, signedDataLength;
 
      /* Parse input, check for correct parameters */
      parseResult = Parse(numParams, params);
@@ -49,13 +69,15 @@ int Sundec::Decrypt(int numParams, char** params)
 
           /* Get Size of file */
           signedDataLength = fOps.GetFileSize(inputFileName);
-          bufferLength = signedDataLength - gcrypt.GetHMACLength();
-          if(bufferLength < 0)
+          if(signedDataLength < 0)
                return -1;
+          cipherTextLength = signedDataLength - gcrypt.GetHMACLength();
+          plainTextLength = gcrypt.GetDecryptedLength(cipherTextLength);
 
           /* Allocate memory */
-          buffer = new unsigned char[bufferLength];
           signedData = new unsigned char[signedDataLength];
+          cipherText = new unsigned char[cipherTextLength];
+          plainText = new unsigned char[plainTextLength];
 
           /* Read the file */
           if(!fOps.ReadFile(inputFileName, signedData, signedDataLength))
@@ -79,43 +101,56 @@ int Sundec::Decrypt(int numParams, char** params)
           gcrypt.PrintKeyHex(key);
 
           signedDataLength = numBytes;
-          bufferLength = signedDataLength - gcrypt.GetHMACLength();
-          buffer = new unsigned char[bufferLength];
+          cipherTextLength = signedDataLength - gcrypt.GetHMACLength();
+          plainTextLength = gcrypt.GetDecryptedLength(cipherTextLength);
           signedData = new unsigned char[signedDataLength];
+          cipherText = new unsigned char[cipherTextLength];
+          plainText = new unsigned char[plainTextLength];
           sunSocket->GetRecvMsg((char*)signedData, signedDataLength);
      }
 
      /* Check the HMAC signature */
-     if(!gcrypt.CheckHMAC(key, signedData, signedDataLength, buffer, bufferLength))
+     if(!gcrypt.CheckHMAC(key, signedData, signedDataLength, cipherText, cipherTextLength))
      {
           gcrypt.PrintError();
-          return 62;
+          return ERR_INVAL_HMAC;
      }
 
      /* Decrypt the file */
-     if(!gcrypt.Decrypt(key, buffer, bufferLength))
+     if(!gcrypt.Decrypt(key, cipherText, cipherTextLength, plainText, plainTextLength))
      {
           gcrypt.PrintError();
           return -1;
      }
 
      /* Write the decrypted file */
-     if(!fOps.WriteFile(outputFileName, buffer, bufferLength))
+     if(!fOps.WriteFile(outputFileName, plainText, plainTextLength))
      {
           cout << "Error writing decrypted file" << endl;
           return -1;
      }
 
-     printf("Successfully received and decrypted %s (%lu bytes written).\n", outputFileName.c_str(), bufferLength);
+     printf("Successfully received and decrypted %s (%lu bytes written).\n", outputFileName.c_str(), plainTextLength);
 
-     delete[] buffer;
+     delete[] plainText;
+     delete[] cipherText;
      delete[] signedData;
      return 0;
 }
 
-/**************************************************
- *
- **************************************************/
+/************************************************************************************************************
+ *   @params:
+ *			int numParams: number of input parameters
+ *			char** params: array of input parameters    
+ *   @return:
+ *			0: success
+ *			33: output file exists
+ *			-1: other error
+ *   @desc:
+ *			parses the input from the command line, and stores values to proper member variables
+ *			if error occurs, an error code > 0 is returned to indicate the type of error, displayed by
+ *			PrintError()
+ ***********************************************************************************************************/
 int Sundec::Parse(int numParams, char** params)
 {
      struct stat buffer;
@@ -173,9 +208,14 @@ int Sundec::Parse(int numParams, char** params)
      return 0;
 }
 
-/**************************************************
- *
- **************************************************/
+/************************************************************************************************************
+ *   @params:
+ *			int errCode: error code
+ *   @return:
+ *			n/a 
+ *   @desc:
+ *			prints an error messaging corresponding to the input error code  
+ ***********************************************************************************************************/
 void Sundec::ParseErrorMsg(int errCode)
 {
      switch(errCode)

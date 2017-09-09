@@ -1,3 +1,13 @@
+/************************************************************************************************************
+*	Author:		William Posey
+*	Course: 		University of Florida, CNT 5410
+*	Semester:		Fall 2017
+*	Project:		Assignment 2, Suncrypt
+*	File:		Suncrypt.h
+*	Description:	This file contains the declaration of the Suncrypt class, which is used to
+*				implement encryption of a locally stored file and either save it locally, or transmit
+*				it to a destination IP address and port
+************************************************************************************************************/
 #ifndef SUNCRYPT_H
 #define SUNCRYPT_H
 

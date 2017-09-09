@@ -1,3 +1,13 @@
+/************************************************************************************************************
+*	Author:		William Posey
+*	Course:		University of Florida, CNT 5410
+*	Semester:		Fall 2017
+*	Project:		Assignment 2, Suncrypt
+*	File:		Sundec.h
+*	Description:   This file contains the declaration of the Sundec class, which is used to implement
+*				decryption of an encrypted file either stored locally, or received over network
+*				communication
+************************************************************************************************************/
 #ifndef SUNDEC_H
 #define SUNDEC_H
 
@@ -22,6 +32,7 @@ typedef enum
 	ERR_NO_FILE		= 3,
      ERR_EXT             = 4,
      ERR_FILE_EXISTS     = 33,
+     ERR_INVAL_HMAC      = 62,
 } parseErrorTypes;	
 
 /* Sundec Class */

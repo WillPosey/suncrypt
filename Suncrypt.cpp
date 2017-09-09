@@ -1,3 +1,13 @@
+/************************************************************************************************************
+*    Author:        William Posey
+*    Course:        University of Florida, CNT 5410
+*    Semester:      Fall 2017
+*    Project:       Assignment 2, Suncrypt
+*    File:          Suncrypt.cpp
+*    Description:   This file contains the definitions for the methods of the Suncrypt class, which is used
+*                   to implement encryption of a locally stored file and either save it locally, or transmit
+*                   it to a destination IP address and port
+************************************************************************************************************/
 #include "Suncrypt.h"
 #include <iostream>
 #include <string>
@@ -11,7 +21,7 @@ using std::endl;
 using std::string;
 
 /**************************************************
- *
+ *                  Main Method
  **************************************************/
 int main(int argc, char** argv)
 {
@@ -19,14 +29,24 @@ int main(int argc, char** argv)
      return s.Encrypt(argc, argv);
 }
 
-/**************************************************
- *
- **************************************************/
+/************************************************************************************************************
+ *   @params:
+ *             int numParams: number of input parameters, passed to Parse()
+ *             char** params: array of input parameters, passed to Parse()
+ *   @return:
+ *             0: success
+ *             33: output file exists
+ *             -1: other error
+ *   @desc:
+ *             parses the input parameters, then encrypts the input file
+ *             the encrypted input file is signed with an HMAC and appends the HMAC to the encrypted file
+ *             either saves the encrypted file locally, or transmits it to a receiver over the network
+ ***********************************************************************************************************/
 int Suncrypt::Encrypt(int numParams, char** params)
 {
      int parseResult;
-     unsigned char *buffer, *signedData;
-     size_t bufferLength, signedDataLength;
+     unsigned char *plainText, *cipherText, *signedData;
+     size_t plainTextLength, cipherTextLength, signedDataLength;
 
      /* Parse input, check for correct parameters */
      parseResult = Parse(numParams, params);
@@ -47,28 +67,30 @@ int Suncrypt::Encrypt(int numParams, char** params)
      gcrypt.PrintKeyHex(key);
 
      /* Get Size of file */
-     bufferLength = fOps.GetFileSize(inputFileName);
-     if(bufferLength < 0)
+     plainTextLength = fOps.GetFileSize(inputFileName);
+     if(plainTextLength < 0)
           return -1;
+     cipherTextLength = gcrypt.GetEncryptedLength(plainTextLength);
 
      /* Allocate memory */
-     buffer = new unsigned char[bufferLength];
+     plainText = new unsigned char[plainTextLength];
+     cipherText = new unsigned char[cipherTextLength];
 
      /* Read the input file */
-     if(!fOps.ReadFile(inputFileName, buffer, bufferLength))
+     if(!fOps.ReadFile(inputFileName, plainText, plainTextLength))
           return -1;
 
      /* Encrypt the file */
-     if(!gcrypt.Encrypt(key, buffer, bufferLength))
+     if(!gcrypt.Encrypt(key, plainText, plainTextLength, cipherText, cipherTextLength))
      {
           gcrypt.PrintError();
           return -1;
      }
 
      /* Sign the data */
-     signedDataLength = bufferLength + gcrypt.GetHMACLength();
+     signedDataLength = cipherTextLength + gcrypt.GetHMACLength();
      signedData = new unsigned char[signedDataLength];
-     if(!gcrypt.AppendHMAC(key, buffer, bufferLength, signedData, signedDataLength))
+     if(!gcrypt.AppendHMAC(key, cipherText, cipherTextLength, signedData, signedDataLength))
      {
           gcrypt.PrintError();
           return -1;
@@ -90,15 +112,25 @@ int Suncrypt::Encrypt(int numParams, char** params)
           cout << "Successfully received" << endl;
      }
 
-     delete[] buffer;
+     delete[] plainText;
+     delete[] cipherText;
      delete[] signedData;
-
      return 0;
 }
 
-/**************************************************
- *
- **************************************************/
+/************************************************************************************************************
+ *   @params:
+ *             int numParams: number of input parameters
+ *             char** params: array of input parameters    
+ *   @return:
+ *             0: success
+ *             33: output file exists
+ *             -1: other error
+ *   @desc:
+ *             parses the input from the command line, and stores values to proper member variables
+ *             if error occurs, an error code > 0 is returned to indicate the type of error, displayed by
+ *             PrintError()
+ ***********************************************************************************************************/
 int Suncrypt::Parse(int numParams, char** params)
 {
      struct stat buffer;
@@ -158,9 +190,14 @@ int Suncrypt::Parse(int numParams, char** params)
      return 0;
 }
 
-/**************************************************
- *
- **************************************************/
+/************************************************************************************************************
+ *   @params:
+ *             int errCode: error code
+ *   @return:
+ *             n/a 
+ *   @desc:
+ *             prints an error messaging corresponding to the input error code  
+ ***********************************************************************************************************/
 void Suncrypt::ParseErrorMsg(int errCode)
 {
      switch(errCode)
