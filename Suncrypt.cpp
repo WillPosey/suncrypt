@@ -1,3 +1,13 @@
+/************************************************************************************************************
+*    Author:        William Posey
+*    Course:        University of Florida, CNT 5410
+*    Semester:      Fall 2017
+*    Project:       Assignment 2, Suncrypt
+*    File:          Suncrypt.cpp
+*    Description:   This file contains the definitions for the methods of the Suncrypt class, which is used
+*                   to implement encryption of a locally stored file and either save it locally, or transmit
+*                   it to a destination IP address and port
+************************************************************************************************************/
 #include "Suncrypt.h"
 #include <iostream>
 #include <string>
@@ -11,7 +21,7 @@ using std::endl;
 using std::string;
 
 /**************************************************
- *
+ *                  Main Method
  **************************************************/
 int main(int argc, char** argv)
 {
@@ -19,9 +29,19 @@ int main(int argc, char** argv)
      return s.Encrypt(argc, argv);
 }
 
-/**************************************************
- *
- **************************************************/
+/************************************************************************************************************
+ *   @params:
+ *             int numParams: number of input parameters, passed to Parse()
+ *             char** params: array of input parameters, passed to Parse()
+ *   @return:
+ *             0: success
+ *             33: output file exists
+ *             -1: other error
+ *   @desc:
+ *             parses the input parameters, then encrypts the input file
+ *             the encrypted input file is signed with an HMAC and appends the HMAC to the encrypted file
+ *             either saves the encrypted file locally, or transmits it to a receiver over the network
+ ***********************************************************************************************************/
 int Suncrypt::Encrypt(int numParams, char** params)
 {
      int parseResult;
@@ -48,9 +68,9 @@ int Suncrypt::Encrypt(int numParams, char** params)
 
      /* Get Size of file */
      plainTextLength = fOps.GetFileSize(inputFileName);
-     cipherTextLength = plainTextLength;
      if(plainTextLength < 0)
           return -1;
+     cipherTextLength = gcrypt.GetEncryptedLength(plainTextLength);
 
      /* Allocate memory */
      plainText = new unsigned char[plainTextLength];
@@ -95,13 +115,22 @@ int Suncrypt::Encrypt(int numParams, char** params)
      delete[] plainText;
      delete[] cipherText;
      delete[] signedData;
-
      return 0;
 }
 
-/**************************************************
- *
- **************************************************/
+/************************************************************************************************************
+ *   @params:
+ *             int numParams: number of input parameters
+ *             char** params: array of input parameters    
+ *   @return:
+ *             0: success
+ *             33: output file exists
+ *             -1: other error
+ *   @desc:
+ *             parses the input from the command line, and stores values to proper member variables
+ *             if error occurs, an error code > 0 is returned to indicate the type of error, displayed by
+ *             PrintError()
+ ***********************************************************************************************************/
 int Suncrypt::Parse(int numParams, char** params)
 {
      struct stat buffer;
@@ -161,9 +190,14 @@ int Suncrypt::Parse(int numParams, char** params)
      return 0;
 }
 
-/**************************************************
- *
- **************************************************/
+/************************************************************************************************************
+ *   @params:
+ *             int errCode: error code
+ *   @return:
+ *             n/a 
+ *   @desc:
+ *             prints an error messaging corresponding to the input error code  
+ ***********************************************************************************************************/
 void Suncrypt::ParseErrorMsg(int errCode)
 {
      switch(errCode)

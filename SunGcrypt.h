@@ -1,8 +1,20 @@
+/************************************************************************************************************
+*	Author:			William Posey
+*	Course: 		University of Florida, CNT 5410
+*	Semester:		Fall 2017
+*	Project:		Assignment 2, Suncrypt
+*	File:			SunGcrypt.h
+*	Description:	This file contains the declaration of the SunGcrypt class, which is used to
+*					implement functionality from the libgcrypt library
+************************************************************************************************************/
 #ifndef SUN_GCRYPT_H
 #define SUN_GCRYPT_H
 
 #include <string>
 #include <gcrypt.h>
+
+using std::string;
+using std::filebuf;
 
 #define SUNGCRY_FILE_EXT		".uf"	/* File extension of encrypted file */
 #define SUNGCRY_KEY_SIZE		16		/* Key length for used for AES128 and HMAC (in bytes) */
@@ -12,27 +24,27 @@
 #define SUNGCRY_SALT_LENGTH		4		/* Length of the salt */
 #define SUNGCRY_IV				5844	/* IV value to use for CBC */
 
-using std::string;
-using std::filebuf;
-
 class SunGcrypt
 {
 public:
 	SunGcrypt();
 	bool CreateKey(string &key, size_t keyLength);
-	bool Encrypt(const string key, unsigned char* plainText, size_t plainTextLength, unsigned char* cipherText, size_t cipherTextLength);
-	bool Decrypt(const string key, unsigned char* cipherText, size_t cipherTextLength, unsigned char* plainText, size_t plainTextLength);
+	bool Encrypt(const string key, unsigned char* plainText, size_t plainTextLength, unsigned char* cipherText, unsigned int cipherTextLength);
+	bool Decrypt(const string key, unsigned char* cipherText, unsigned int cipherTextLength, unsigned char* plainText, unsigned int plainTextLength);
 	bool AppendHMAC(const string key, unsigned char* data, unsigned int dataLength, unsigned char* signedData, unsigned int signedDataLength);
 	bool CheckHMAC(const string key, unsigned char* signedData, unsigned int signedDataLength, unsigned char* cipherText, unsigned int cipherTextLength);
 	unsigned int GetHMACLength();
 	void PrintError();
 	void PrintKeyHex(const string key);
+	unsigned int GetEncryptedLength(unsigned int plainTextLength);
+	unsigned int GetDecryptedLength(unsigned int cipherTextLength);
 
 private:
 	bool OpenAESHandle();
 	void CloseAESHandle();
 	bool SetAESKey(const string key);
 	bool SetAESIV();
+	void GetIV(unsigned char* ivBuffer, unsigned int ivBufferLength);
 
 	bool OpenHMACHandle();
 	bool SetHMACKey(const string key);
