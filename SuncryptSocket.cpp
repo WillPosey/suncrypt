@@ -41,6 +41,7 @@ SuncryptSocket::SuncryptSocket(const string portNum)
 	recvBufferLength = 0;
 	port = portNum;
 
+	/* set addrinfo values */
 	memset(&hints, 0, sizeof hints);
 	hints.ai_family = AF_INET;
 	hints.ai_socktype = SOCK_DGRAM;
@@ -52,6 +53,7 @@ SuncryptSocket::SuncryptSocket(const string portNum)
 		return;
 	}
 
+	/* loop through until socket and bind calls are successful */
 	for(p = addrInfo; p != NULL; p = p->ai_next) 
 	{
 		if ((sockFd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) 
@@ -316,13 +318,16 @@ void SuncryptSocket::GetRecvMsg(char* buffer, size_t bufferLength)
  ***********************************************************************************************************/
 void SuncryptSocket::PackHeader(char* dest, msgHeader_t header)
 {
+	/* convert the header values to network order */
 	uint32_t seqNum_N = htonl(header.seqNum);
 	uint16_t msgSize_N = htons(header.msgSize);
 	uint16_t finalBlk_N = htons(header.finalBlk);
 
+	/* compute the offsets in the buffer to store  */
 	int msgOffset = sizeof(seqNum_N);
 	int finalOffset = msgOffset + sizeof(msgSize_N);
 
+	/* copy the values into the destination buffer */
 	memcpy(dest, &seqNum_N, sizeof(seqNum_N));
 	memcpy(dest+msgOffset, &msgSize_N, sizeof(msgSize_N)); 
 	memcpy(dest+finalOffset, &finalBlk_N, sizeof(finalBlk_N)); 
@@ -343,13 +348,16 @@ void SuncryptSocket::GetHeader(char* buffer, msgHeader_t *header)
 	uint16_t msgSize_N;
 	uint16_t finalBlk_N;
 
+	/* compute the offset of the contents of the header */ 
 	int msgOffset = sizeof(seqNum_N);
 	int finalOffset = msgOffset + sizeof(msgSize_N);
 
+	/* retrieve the contents of the header from the buffer */
 	memcpy(&seqNum_N, buffer, sizeof(seqNum_N));
 	memcpy(&msgSize_N, buffer+msgOffset, sizeof(msgSize_N));
 	memcpy(&finalBlk_N, buffer+finalOffset, sizeof(finalBlk_N));
 
+	/* convert the contents host order, store in the header */
 	header->seqNum = ntohl(seqNum_N);
 	header->msgSize = ntohs(msgSize_N);
 	header->finalBlk = ntohs(finalBlk_N);
