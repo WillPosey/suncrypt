@@ -30,10 +30,14 @@ endif
 default: all
 all: $(TARGETS)
 
-### target to compile utilizing gcrypt installation on host system ###
-dynamiclink: LINK = $(LINK_DYN)
-dynamiclink: INC = $()
-dynamiclink: all
+### target to compile utilizing gcrypt installation on host system, headers installed ###
+dynLink: LINK = $(LINK_DYN)
+dynLink: INC = $()
+dynLink: all
+
+### target to compile utilizing gcrypt installation on host system, no headers installed ###
+dynLink_noHeader: LINK = $(LINK_DYN)
+dynLink_noHeader: all
 
 ### rule for suncrypt ###
 suncrypt: $(OBJ_ENC)
