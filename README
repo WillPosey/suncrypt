@@ -1,0 +1,59 @@
+====================================================================================
+=	Author:			William Posey
+=	Course: 		University of Florida, CNT 5410
+=	Semester:		Fall 2017
+=	Project:		Assignment 2, Suncrypt
+=	File:			README
+=	Description:	This file describes some basics about suncrypt and sundec
+====================================================================================
+
+Table of Contents
+------------------
+1) Quick Background
+2) Required files
+3) Required libraries
+4) Miscellaneous Notes
+
+====================================================================================
+1) QUICK BACKGROUND
+====================================================================================
+*	This project includes two programs, suncrypt and sundec. Encryption is carried
+	out by suncrypt, while decryption is carried out by sundec
+
+*	The project is written in C++, and must be compiled with GNU GCC g++
+
+*	The project involves utilizing libgcrypt to perform cryptographic functions
+
+*	Both accept a <file> input, followed by a <-l> or <-d> for the mode. 
+	Local mode, <-l> encrypts a file and writes the output file to a file with the 
+	input file name appended by ".uf" in suncrypt, and decrypts a file that is 
+	assumed to have the ".uf" extension and outputs to a file with the input name 
+	without the extension in sundec. Daemon, or network, mode -d, performs the same 
+	operations, but the	output file of suncrypt is sent over the network to sundec 
+	running	at the input <IPaddress:port>, where sundec is awaiting the arrival 
+	of the file on <port>
+
+====================================================================================
+2) REQUIRED FILES
+====================================================================================
+*	Suncrypt.cpp
+*	Suncrypt.h
+*	Sundec.cpp
+*	Sundec.h
+*	SunGcrypt.cpp
+*	SunGcrypt.h
+*	SuncryptSocket.cpp
+*	SuncryptSocket.h
+*	FileOps.cpp
+*	FileOps.h
+*	makefile
+
+====================================================================================
+3) REQUIRED LIBRARIES
+====================================================================================
+*	The project was developed and tested on a machine with the libgcrypt20-dev 
+	package installed, which provides the libgcrypt.so dynamic library
+
+====================================================================================
+4) MISCELLANEOUS NOTES
+====================================================================================
