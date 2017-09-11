@@ -33,6 +33,9 @@ typedef enum
 	ERR_FILE_EXISTS	= 33
 } parseErrorTypes;	
 
+/* default port to bind the socket to */
+#define SUNCRYPT_PORT "45000"
+
 /* Suncrypt Class */
 class Suncrypt
 {
@@ -47,7 +50,8 @@ private:
      string outputFileName;
      string type;
      string ipAddr;
-     string port;
+     string sendPort;
+     string recvPort;
      string key;
 
      SunGcrypt gcrypt;

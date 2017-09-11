@@ -45,6 +45,7 @@ private:
 	bool SetAESKey(const string key);
 	bool SetAESIV();
 	void GetIV(unsigned char* ivBuffer, unsigned int ivBufferLength);
+	void GetNonce(unsigned char* nonceBuffer, unsigned int nonceBufferLength);
 
 	bool OpenHMACHandle();
 	bool SetHMACKey(const string key);

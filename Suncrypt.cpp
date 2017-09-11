@@ -56,7 +56,9 @@ int Suncrypt::Encrypt(int numParams, char** params)
           return parseResult;
      }
 
-     sunSocket = new SuncryptSocket(port);
+     /* make sure sendPort and recvPort are different, in the case suncrypt, sundec are on the same machine */
+     recvPort = (sendPort.compare(SUNCRYPT_PORT)==0) ? std::to_string(atoi(SUNCRYPT_PORT)+1) : SUNCRYPT_PORT;
+     sunSocket = new SuncryptSocket(recvPort, sendPort);
 
      /* Create and display the key */
      if(!gcrypt.CreateKey(key, SUNGCRY_KEY_SIZE))
@@ -106,7 +108,7 @@ int Suncrypt::Encrypt(int numParams, char** params)
      else 
      {
           printf("Successfully encrypted %s to %s (%lu bytes written).\n", inputFileName.c_str(), outputFileName.c_str(), signedDataLength);
-          cout << "Transmitting to " << ipAddr << ":" << port << endl;
+          cout << "Transmitting to " << ipAddr << ":" << sendPort << endl;
           if(sunSocket->Send(ipAddr, (char*)signedData, signedDataLength) != 0)
                return -1;
           cout << "Successfully received" << endl;
@@ -180,7 +182,7 @@ int Suncrypt::Parse(int numParams, char** params)
 
           /* assign IP and port */
           ipAddr = ipAddr_port.substr(0,delimeter);
-          port = ipAddr_port.substr(delimeter+1, ipAddr_port.size());
+          sendPort = ipAddr_port.substr(delimeter+1, ipAddr_port.size());
 
           localMode = false;
      }

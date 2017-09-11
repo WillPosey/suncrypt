@@ -51,6 +51,7 @@ bool SunGcrypt::CreateKey(string &key, size_t keyLength)
 	cout << "Password: ";
     cin >> password;
 
+    /* key derivation: PBKDF2 using SHA512 with 4 byte salt over 4096 iterartions into 128 bit key */
     errCode = gcry_kdf_derive(	password.c_str(),   				// password
 								DecimalToOctal(password.size()),    // password length, octal
 								GCRY_KDF_PBKDF2,    				// key derivation function
@@ -146,13 +147,13 @@ bool SunGcrypt::Encrypt(const string key, unsigned char* plainText, size_t plain
 		return false;
 	}
 
-	/* create a buffer to store the plain text appened by a single block containing the IV, in order */
+	/* create a buffer to store the plain text appened by a single block containing a nonce, in order */
 	/* to ensure the plain text is at least greater than 1 block in length, for CTS */
 	char buffer[bufferLength];
 	memcpy(buffer, plainText, plainTextLength);
-	unsigned char iv[SUNGCRY_BLK_SIZE];
-	GetIV(iv , SUNGCRY_BLK_SIZE);
-	memcpy(buffer+plainTextLength, iv, SUNGCRY_BLK_SIZE);
+	unsigned char nonce[SUNGCRY_BLK_SIZE];
+	GetNonce(nonce, SUNGCRY_BLK_SIZE);
+	memcpy(buffer+plainTextLength, nonce, SUNGCRY_BLK_SIZE);
 
 	/* encrypt the buffer, in place */
 	errCode = gcry_cipher_encrypt(aesHandle, buffer, bufferLength, NULL, 0);
@@ -182,8 +183,8 @@ bool SunGcrypt::Encrypt(const string key, unsigned char* plainText, size_t plain
  *	@desc:
  *				wraps the gcry_cipher_decrypt function
  *				first opens a handle for AES-128 with CBC and CTS, then sets the key and IV
- *				the encrypted cipher text was appended by a block containing the IV, so after decryption
- *				this block is removed, and then the result is copied into the plainText buffer
+ *				the encrypted cipher text was appended by a block containing a nonce value, so after 
+ * 				decryption this block is removed, and then the result is copied into the plainText buffer
  ***********************************************************************************************************/
 bool SunGcrypt::Decrypt(const string key, unsigned char* cipherText, unsigned int cipherTextLength, unsigned char* plainText, unsigned int plainTextLength)
 {
@@ -228,7 +229,7 @@ bool SunGcrypt::Decrypt(const string key, unsigned char* cipherText, unsigned in
 	}
 
 	/* copy the decrypted data to plainText buffer */
-	memcpy(plainText, buffer, plainTextLength);
+	memcpy(plainText, buffer, cipherTextLength-SUNGCRY_BLK_SIZE);
 	CloseAESHandle();
 	return true;
 }
@@ -371,6 +372,22 @@ void SunGcrypt::GetIV(unsigned char* ivBuffer, unsigned int ivBufferLength)
 		memset(ivBuffer, 0, ivBufferLength);
 		memcpy(ivBuffer, &ivVal, sizeof(ivVal));
 	}
+}
+
+
+/************************************************************************************************************
+ *	@params:
+ *				unsigned char* nonceBuffer: buffer to store the nonce value
+ *				unsigned int nonceBufferLength: length of the nonceBuffer
+ *	@return:
+ *				n/a
+ *	@desc:
+ *				wraps the gcry_create_nonce function
+ *				copies a nonce value into the nonceBuffer
+ ***********************************************************************************************************/
+void SunGcrypt::GetNonce(unsigned char* nonceBuffer, unsigned int nonceBufferLength)
+{
+	gcry_create_nonce(nonceBuffer, nonceBufferLength);
 }
 
 /************************************************************************************************************
