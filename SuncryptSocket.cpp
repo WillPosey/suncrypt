@@ -33,13 +33,14 @@ using std::copy;
  *	@desc:
  *				creates and binds a socket to any system IP address and the specified port
  ***********************************************************************************************************/
-SuncryptSocket::SuncryptSocket(const string portNum)
+SuncryptSocket::SuncryptSocket(const string recvPortNum, const string sendPortNum)
 {	
 	struct addrinfo hints, *addrInfo, *p;
 	recvBufferGood = false;
 	socketGood = false;
 	recvBufferLength = 0;
-	port = portNum;
+	sendPort = sendPortNum;
+	recvPort = recvPortNum;
 
 	/* set addrinfo values */
 	memset(&hints, 0, sizeof hints);
@@ -47,7 +48,7 @@ SuncryptSocket::SuncryptSocket(const string portNum)
 	hints.ai_socktype = SOCK_DGRAM;
 	hints.ai_flags = AI_PASSIVE;
 
-	if (getaddrinfo(NULL, port.c_str(), &hints, &addrInfo) != 0) 
+	if (getaddrinfo(NULL, recvPort.c_str(), &hints, &addrInfo) != 0) 
 	{
 		cout << "Error in SuncryptSocket Constructor: getaddrinfo()" << endl;
 		return;
@@ -58,6 +59,7 @@ SuncryptSocket::SuncryptSocket(const string portNum)
 	{
 		if ((sockFd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) 
 			continue;
+
 		if (bind(sockFd, p->ai_addr, p->ai_addrlen) == -1) 
 		{
 			close(sockFd);
@@ -113,6 +115,7 @@ int SuncryptSocket::Send(const string destIP, const char* msg, size_t msgLength)
 	int numBlks;
 	struct timeval ackTimeout;
 	msgHeader_t msgHeader, recvMsgHeader;
+	bool ackSeqNum;
 	char sendBlk[BLK_SIZE];
 	char ack[HEADER_SIZE];
 	struct sockaddr_in sendAddr, recvAddr;
@@ -124,7 +127,7 @@ int SuncryptSocket::Send(const string destIP, const char* msg, size_t msgLength)
 
 	memset(&sendAddr, 0, sizeof(sendAddr));
 	sendAddr.sin_family = AF_INET;
-	sendAddr.sin_port = htons(atoi(port.c_str()));
+	sendAddr.sin_port = htons(atoi(sendPort.c_str()));
 	inet_pton(AF_INET, destIP.c_str(), &(sendAddr.sin_addr));
 
 	numBlks = msgLength / MAX_MSG_SIZE;
@@ -150,6 +153,7 @@ int SuncryptSocket::Send(const string destIP, const char* msg, size_t msgLength)
 	{
 		do
 		{
+			ackSeqNum = false;
 			memset(sendBlk, 0, MAX_MSG_SIZE);
 			if(i==(numBlks-1))
 			{
@@ -180,8 +184,9 @@ int SuncryptSocket::Send(const string destIP, const char* msg, size_t msgLength)
 			if(string(sentIP).compare(recvIP) != 0)
 				continue;
 			GetHeader(ack, &recvMsgHeader);
+			ackSeqNum = (recvMsgHeader.seqNum == msgHeader.seqNum);
 
-		}while(recvMsgHeader.seqNum != msgHeader.seqNum);
+		}while(!ackSeqNum);
 
 		msgHeader.seqNum++;
 	}

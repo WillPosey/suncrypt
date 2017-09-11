@@ -85,6 +85,7 @@ int Sundec::Decrypt(int numParams, char** params)
      }
      else
      {
+          /* Receive the encrypted file */
           cout << "Waiting for connections..." << endl;
           sunSocket = new SuncryptSocket(port);
           numBytes = sunSocket->Receive();
@@ -100,6 +101,7 @@ int Sundec::Decrypt(int numParams, char** params)
           }
           gcrypt.PrintKeyHex(key);
 
+          /* allocate memory to hold the signed data, encrypted data, and decrypted data */
           signedDataLength = numBytes;
           cipherTextLength = signedDataLength - gcrypt.GetHMACLength();
           plainTextLength = gcrypt.GetDecryptedLength(cipherTextLength);

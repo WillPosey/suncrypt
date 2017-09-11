@@ -6,17 +6,13 @@
 #	File:			makefile
 #	Description:	This file is used to compile the suncrypt and sundec programs
 ####################################################################################
-TARGETS			:=   suncrypt sundec
-SRC_ENC			:=   Suncrypt.cpp SunGcrypt.cpp FileOps.cpp SuncryptSocket.cpp
-OBJ_ENC			:=   $(SRC_ENC:.cpp=.o)   
-SRC_DEC			:=   Sundec.cpp SunGcrypt.cpp FileOps.cpp SuncryptSocket.cpp
-OBJ_DEC			:=   $(SRC_DEC:.cpp=.o)   
-LINK			:=   -lgcrypt
-FLAGS			:=   -std=c++0x
-LINK_PATH_32	:=	L/lib/i386-linux-gnu
-LINK_PATH_64	:=	L/lib/x86_64-linux-gnu
-
-
+TARGETS			:=	suncrypt sundec
+SRC_ENC			:=	Suncrypt.cpp SunGcrypt.cpp FileOps.cpp SuncryptSocket.cpp
+OBJ_ENC			:= 	$(SRC_ENC:.cpp=.o)   
+SRC_DEC			:=	Sundec.cpp SunGcrypt.cpp FileOps.cpp SuncryptSocket.cpp
+OBJ_DEC			:=	$(SRC_DEC:.cpp=.o)   
+LINK			:=	gcrypt/libs/libgcrypt.a gcrypt/libs/libgpg-error.a 
+FLAGS			:=	-std=c++0x
 
 default: all
 all: $(TARGETS)
@@ -25,6 +21,7 @@ all: $(TARGETS)
 suncrypt: $(OBJ_ENC)
 	g++ $(FLAGS) $(OBJ_ENC) -o $@ $(LINK)
      
+### rule for sundec ###
 sundec: $(OBJ_DEC)
 	g++ $(FLAGS) $(OBJ_DEC) -o $@ $(LINK)
 
