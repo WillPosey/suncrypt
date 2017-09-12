@@ -125,20 +125,24 @@ int SuncryptSocket::Send(const string destIP, const char* msg, size_t msgLength)
 	char sentIP[INET_ADDRSTRLEN];
 	char sendHeader[HEADER_SIZE];
 
+	/* initialize the destination sockadd_in structure */
 	memset(&sendAddr, 0, sizeof(sendAddr));
 	sendAddr.sin_family = AF_INET;
 	sendAddr.sin_port = htons(atoi(sendPort.c_str()));
 	inet_pton(AF_INET, destIP.c_str(), &(sendAddr.sin_addr));
 
+	/* determine total number of blocks for the message */
 	numBlks = msgLength / MAX_MSG_SIZE;
 	if(msgLength%MAX_MSG_SIZE)
 		numBlks++;
 
+	/* initialize message header */
 	memset(&msgHeader, 0, sizeof(msgHeader));
 	msgHeader.finalBlk = 0;
 	msgHeader.seqNum = 0;
 	msgHeader.msgSize = MAX_MSG_SIZE;
 
+	/* save the destination IP address string, and set a timeout for receiving acks */
 	inet_ntop(AF_INET, &(sendAddr.sin_addr), sentIP, INET_ADDRSTRLEN);
 	ackTimeout.tv_sec = 1;
 	ackTimeout.tv_usec = 0;
@@ -149,18 +153,23 @@ int SuncryptSocket::Send(const string destIP, const char* msg, size_t msgLength)
 		return -1;
 	}		
 
+	/* loop through each block of the message and send */
 	for(int i=0; i<numBlks; i++)
 	{
+		/* send current block until ack received */
 		do
 		{
 			ackSeqNum = false;
 			memset(sendBlk, 0, MAX_MSG_SIZE);
+
+			/* check if last block */
 			if(i==(numBlks-1))
 			{
 				msgHeader.msgSize = msgLength%MAX_MSG_SIZE;
 				msgHeader.finalBlk = 1;
 			}
 
+			/* write message header, message into buffer */
 			PackHeader(sendBlk, msgHeader);
 			memcpy(sendBlk+HEADER_SIZE, msg+(i*MAX_MSG_SIZE), msgHeader.msgSize);
 
@@ -171,6 +180,7 @@ int SuncryptSocket::Send(const string destIP, const char* msg, size_t msgLength)
 				return -1;
 			}
 
+			/* receive ack */
 			if(recvfrom(sockFd, ack, HEADER_SIZE, 0, (struct sockaddr*)&recvAddr, &recvAddrLen) < 0)
 			{
 				if(errno == EAGAIN || errno == EWOULDBLOCK)
@@ -180,6 +190,7 @@ int SuncryptSocket::Send(const string destIP, const char* msg, size_t msgLength)
 				return -1;
 			}
 
+			/* check IP of ack, check if ack is correct sequence number */
 			inet_ntop(AF_INET, &(recvAddr.sin_addr), recvIP, INET_ADDRSTRLEN);
 			if(string(sentIP).compare(recvIP) != 0)
 				continue;
@@ -191,6 +202,7 @@ int SuncryptSocket::Send(const string destIP, const char* msg, size_t msgLength)
 		msgHeader.seqNum++;
 	}
 
+	/* remove ack timeout on socket */
 	ackTimeout.tv_sec = 0;
 	ackTimeout.tv_usec = 0;
 	if(setsockopt(sockFd, SOL_SOCKET, SO_RCVTIMEO,&ackTimeout,sizeof(ackTimeout)) < 0)
@@ -238,8 +250,10 @@ int SuncryptSocket::Receive()
 	memset(&msgHeader, 0, sizeof(msgHeader));
 	firstRecv = true;
 
+	/* loop and receive blocks of the file until the final block is received */
 	while(!msgHeader.finalBlk)
 	{
+		/* receive block */
 		numBytes = recvfrom(sockFd, blk, BLK_SIZE, 0, (struct sockaddr*)&senderAddr, &senderAddrLen);
 		if(numBytes < 0 || numBytes < HEADER_SIZE)
 		{
@@ -248,6 +262,7 @@ int SuncryptSocket::Receive()
 			return -1;
 		}
 
+		/* remove header from block */
 		GetHeader(blk, &msgHeader);
 		if(msgHeader.msgSize != (numBytes-HEADER_SIZE))
 		{
@@ -256,6 +271,9 @@ int SuncryptSocket::Receive()
 			return -1;
 		}
 
+		/* check the sender IP, compare against initial connection */
+		/* verify this is the correct sequence number */
+		/* if correct, extract message from block */
 		inet_ntop(AF_INET, &(senderAddr.sin_addr), senderIP, INET_ADDRSTRLEN);
 		if(firstRecv)
 		{
@@ -282,6 +300,7 @@ int SuncryptSocket::Receive()
 			recvBufferLength = recvBuffer.size();
 		}
 
+		/* send ack */
 		PackHeader(ack, msgHeader);
 		if(sendto(sockFd, ack, HEADER_SIZE, 0, (struct sockaddr*)&senderAddr, senderAddrLen) < 0)
 		{

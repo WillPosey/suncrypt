@@ -262,6 +262,7 @@ void SunGcrypt::PrintHex(const string msg, const string data, unsigned int numCo
  *	@return:
  *				n/a
  *	@desc:
+ *				wraps the gcry_md_hash_buffer function
  *				displays the hexadecimal representation of the hash of the data in the buffer
  ***********************************************************************************************************/
 void SunGcrypt::PrintHash(const string msg, const unsigned char* buffer, unsigned int bufferLength)
@@ -271,7 +272,7 @@ void SunGcrypt::PrintHash(const string msg, const unsigned char* buffer, unsigne
 
 	gcry_md_hash_buffer(GCRY_MD_SHA512, hash, buffer, bufferLength);
 
-	PrintHex(msg, string((char*)buffer, bufferLength), 8);
+	PrintHex(msg, string((char*)hash, hashLength), 8);
 }
 
 /************************************************************************************************************
@@ -448,8 +449,7 @@ size_t SunGcrypt::DecimalToOctal(unsigned int decimal)
  *				true: success
  *				false: error	
  *	@desc:
- *				encapsulates libgcrypt HMAC wrapper methods to open a HMAC handle, set the key, write the 
- *				HMAC, and then read the HMAC value
+ *				wraps the gcry_md_hash_buffers function
  *				the contents of the data buffer are copied to the signedData buffer, followed by the 
  *				HMAC read
  *				the signedData buffer must have length allocated equal to the length of the data buffer 
@@ -465,25 +465,32 @@ bool SunGcrypt::AppendHMAC(const string key, unsigned char* data, unsigned int d
 		return false;
 	}
 
+	/* create buffers to hold the key and hmac */
 	unsigned char hmac[hmacLength];
 	unsigned char keyBuffer[key.size()];
 	memcpy(keyBuffer, key.c_str(), key.size());
 
+	/* create an array of gcry_buffer_t structs, which hold fields "data" and "len" */
+	/* that point to an address and hold the number of bytes pointed to, respectively */
 	gcry_buffer_t hmacdata[2];
 	memset(hmacdata, 0, 2*sizeof(gcry_buffer_t));
+
+	/* set the first data pointer to the key, and the second data pointer to the data to be hashed */
 	hmacdata[0].data = keyBuffer;
 	hmacdata[0].len = key.size();
 	hmacdata[1].data = data;
 	hmacdata[1].len = dataLength;
 
+	/* use SHA512 in HMAC mode */
 	errCode = gcry_md_hash_buffers(GCRY_MD_SHA512, GCRY_MD_FLAG_HMAC, hmac, hmacdata, 2);
 	if(errCode)
 	{
 		errMsg = "SunGcrypt::AppendHMAC()-->gcry_md_hash_buffers()";
 		return false;
 	}
-	PrintHex("Appended HMAC:", string((char*)hmac, hmacLength), 8);
 
+	/* Print the HMAC, save the encrypted data appended by the HMAC in signedData buffer */
+	PrintHex("Appended HMAC:", string((char*)hmac, hmacLength), 8);
 	memcpy(signedData, data, dataLength);
 	memcpy(signedData+dataLength, hmac, hmacLength);
 	return true;
@@ -500,43 +507,50 @@ bool SunGcrypt::AppendHMAC(const string key, unsigned char* data, unsigned int d
  *				true: hmac valid
  *				false: hmac invalid
  *	@desc:
- *				encapsulates libgcrypt wrapper methods to open a HMAC handle, set the key, write the HMAC,
- *				and then verify the HMAC
+ *				wraps the gcry_md_hash_buffers function
  *				if the encrypted data held in the signedData buffer has a valid HMAC located at the end
  *				of the buffer, the encrypted data is copied to the cipherText buffer
  ***********************************************************************************************************/
 bool SunGcrypt::CheckHMAC(const string key, unsigned char* signedData, unsigned int signedDataLength, unsigned char* cipherText, unsigned int cipherTextLength)
 {
+	/* create buffers to hold the key, signed hmac, and calculated hmac */
 	unsigned int hmacLength = GetHMACLength();
 	unsigned char hmac[hmacLength], signedHmac[hmacLength];
 	unsigned char keyBuffer[key.size()];
-
 	memcpy(keyBuffer, key.c_str(), key.size());
 	memcpy(signedHmac, signedData+(signedDataLength-hmacLength), hmacLength);
-
+	
+	/* create an array of gcry_buffer_t structs, which hold fields "data" and "len" */
+	/* that point to an address and hold the number of bytes pointed to, respectively */
 	gcry_buffer_t hmacdata[2];
 	memset(hmacdata, 0, 2*sizeof(gcry_buffer_t));
+
+	/* set the first data pointer to the key, and the second data pointer to the encrypted data within signedData */
 	hmacdata[0].data = keyBuffer;
 	hmacdata[0].len = key.size();
 	hmacdata[1].data = signedData;
 	hmacdata[1].len = signedDataLength-hmacLength;
 
+	/* use SHA512 in HMAC mode */
 	errCode = gcry_md_hash_buffers(GCRY_MD_SHA512, GCRY_MD_FLAG_HMAC, hmac, hmacdata, 2);
 	if(errCode)
 	{
 		errMsg = "SunGcrypt::CheckHMAC()-->gcry_md_hash_buffers()";
 		return false;
 	}
-	PrintHex("Appended HMAC:", string((char*)hmac, hmacLength), 8);
-	PrintHex("Read HMAC:", string((char*)signedHmac, hmacLength), 8);
 
+	/* Print the signed and calculated HMACs and verify they are the same */
+	PrintHex("Signed HMAC:", string((char*)hmac, hmacLength), 8);
+	PrintHex("Calculated HMAC:", string((char*)signedHmac, hmacLength), 8);
 	if(strncmp((char*)hmac, (char*)signedHmac, hmacLength) != 0)
 	{
 		errMsg = "";
-		cout << "Invalid HMAC" << endl;
+		cout << "Invalid HMAC Signature" << endl;
 		return false;
 	}
 
+	/* Indicate HMAC is valid, copy encrypted data to the cipherText buffer */
+	cout << "Valid HMAC Signature" << endl;
 	memcpy(cipherText, signedData, signedDataLength-hmacLength);
 	return true;
 }
@@ -547,7 +561,8 @@ bool SunGcrypt::CheckHMAC(const string key, unsigned char* signedData, unsigned 
  *	@return:
  *				length of the HMAC for GCRY_MAC_HMAC_SHA512
  *	@desc:
- *				returns the length of the HMAC for GCRY_MAC_HMAC_SHA512, in order to allocate space to store
+ *				wraps the function gcry_md_get_algo_dlen
+ *				returns the length of the HMAC for GCRY_MD_SHA512, in order to allocate space to store
  *				the HMAC in a buffer
  ***********************************************************************************************************/
 unsigned int SunGcrypt::GetHMACLength()

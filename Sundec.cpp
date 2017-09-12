@@ -82,6 +82,7 @@ int Sundec::Decrypt(int numParams, char** params)
           /* Read the file */
           if(!fOps.ReadFile(inputFileName, signedData, signedDataLength))
                return -1;
+          gcrypt.PrintHash("Hash of input file:", signedData, signedDataLength);
      }
      else
      {
@@ -93,14 +94,6 @@ int Sundec::Decrypt(int numParams, char** params)
                return -1;
           cout << "Recevied encrypted file" << endl;
 
-          /* Create and display the key */
-          if(!gcrypt.CreateKey(key, SUNGCRY_KEY_SIZE))
-          {
-               gcrypt.PrintError();
-               return -1;
-          }
-          gcrypt.PrintHex("Key:", key);
-
           /* allocate memory to hold the signed data, encrypted data, and decrypted data */
           signedDataLength = numBytes;
           cipherTextLength = signedDataLength - gcrypt.GetHMACLength();
@@ -109,6 +102,15 @@ int Sundec::Decrypt(int numParams, char** params)
           cipherText = new unsigned char[cipherTextLength];
           plainText = new unsigned char[plainTextLength];
           sunSocket->GetRecvMsg((char*)signedData, signedDataLength);
+          gcrypt.PrintHash("Hash of inbound file:", signedData, signedDataLength);
+
+          /* Create and display the key */
+          if(!gcrypt.CreateKey(key, SUNGCRY_KEY_SIZE))
+          {
+               gcrypt.PrintError();
+               return -1;
+          }
+          gcrypt.PrintHex("Key:", key);
      }
 
      /* Check the HMAC signature */

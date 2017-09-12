@@ -60,14 +60,6 @@ int Suncrypt::Encrypt(int numParams, char** params)
      recvPort = (sendPort.compare(SUNCRYPT_PORT)==0) ? std::to_string(atoi(SUNCRYPT_PORT)+1) : SUNCRYPT_PORT;
      sunSocket = new SuncryptSocket(recvPort, sendPort);
 
-     /* Create and display the key */
-     if(!gcrypt.CreateKey(key, SUNGCRY_KEY_SIZE))
-     {
-          gcrypt.PrintError();
-          return -1;
-     }
-     gcrypt.PrintHex("Key:", key);
-
      /* Get Size of file */
      plainTextLength = fOps.GetFileSize(inputFileName);
      if(plainTextLength < 0)
@@ -81,6 +73,15 @@ int Suncrypt::Encrypt(int numParams, char** params)
      /* Read the input file */
      if(!fOps.ReadFile(inputFileName, plainText, plainTextLength))
           return -1;
+     gcrypt.PrintHash("Hash of input file:", plainText, plainTextLength);
+
+     /* Create and display the key */
+     if(!gcrypt.CreateKey(key, SUNGCRY_KEY_SIZE))
+     {
+          gcrypt.PrintError();
+          return -1;
+     }
+     gcrypt.PrintHex("Key:", key);
 
      /* Encrypt the file */
      if(!gcrypt.Encrypt(key, plainText, plainTextLength, cipherText, cipherTextLength))
@@ -88,6 +89,7 @@ int Suncrypt::Encrypt(int numParams, char** params)
           gcrypt.PrintError();
           return -1;
      }
+     gcrypt.PrintHash("Hash of encrypted file:", cipherText, cipherTextLength);
 
      /* Sign the data */
      signedDataLength = cipherTextLength + gcrypt.GetHMACLength();
@@ -97,6 +99,7 @@ int Suncrypt::Encrypt(int numParams, char** params)
           gcrypt.PrintError();
           return -1;
      }
+     gcrypt.PrintHash("Hash of encrypted file, appended by HMAC:", signedData, signedDataLength);
 
      /* Write the file, or transmit */
      if(localMode)
