@@ -24,22 +24,31 @@ using std::filebuf;
 #define SUNGCRY_SALT_LENGTH		4		/* Length of the salt */
 #define SUNGCRY_IV				5844	/* IV value to use for CBC */
 
+/* SunGcrypt Class Declaration */
 class SunGcrypt
 {
 public:
 	SunGcrypt();
+	void PrintError();
+
+	/* Public methods related to key derivation */
 	bool CreateKey(string &key, size_t keyLength);
+	void PrintHex(const string msg, const string data, unsigned int numCols=0);
+
+	/* Public methods related to AES */
 	bool Encrypt(const string key, unsigned char* plainText, size_t plainTextLength, unsigned char* cipherText, unsigned int cipherTextLength);
 	bool Decrypt(const string key, unsigned char* cipherText, unsigned int cipherTextLength, unsigned char* plainText, unsigned int plainTextLength);
-	bool AppendHMAC(const string key, unsigned char* data, unsigned int dataLength, unsigned char* signedData, unsigned int signedDataLength);
-	bool CheckHMAC(const string key, unsigned char* signedData, unsigned int signedDataLength, unsigned char* cipherText, unsigned int cipherTextLength);
-	unsigned int GetHMACLength();
-	void PrintError();
-	void PrintKeyHex(const string key);
 	unsigned int GetEncryptedLength(unsigned int plainTextLength);
 	unsigned int GetDecryptedLength(unsigned int cipherTextLength);
 
+	/* Public methods related to HMAC */
+	bool AppendHMAC(const string key, unsigned char* data, unsigned int dataLength, unsigned char* signedData, unsigned int signedDataLength);
+	bool CheckHMAC(const string key, unsigned char* signedData, unsigned int signedDataLength, unsigned char* cipherText, unsigned int cipherTextLength);
+	unsigned int GetHMACLength();
+	void PrintHash(const string msg, const unsigned char* buffer, unsigned int bufferLength);
+
 private:
+	/* Private Methods related to AES */
 	bool OpenAESHandle();
 	void CloseAESHandle();
 	bool SetAESKey(const string key);
@@ -47,18 +56,11 @@ private:
 	void GetIV(unsigned char* ivBuffer, unsigned int ivBufferLength);
 	void GetNonce(unsigned char* nonceBuffer, unsigned int nonceBufferLength);
 
-	bool OpenHMACHandle();
-	bool SetHMACKey(const string key);
-	bool WriteHMAC(const unsigned char* dataBuffer, size_t bufferLength);
-	bool ReadHMAC(unsigned char* hmacBuffer, size_t* bufferLength);
-	bool VerifyHMAC(const unsigned char* hmac, size_t hmacLength);
-	void CloseHMACHandle();
-
 	size_t DecimalToOctal(unsigned int decimal);
 
+	/* Member Variables */
 	bool aesHandleOpen;
 	gcry_cipher_hd_t aesHandle;
-	gcry_mac_hd_t hmacHandle;
 	gcry_error_t errCode;
 	string errMsg;
 };

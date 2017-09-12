@@ -13,6 +13,7 @@
 #include <string>
 using std::string;
 
+/* SuncryptSocket class declaration */
 class FileOps
 {
 public:

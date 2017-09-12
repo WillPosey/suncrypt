@@ -65,7 +65,7 @@ int Sundec::Decrypt(int numParams, char** params)
                gcrypt.PrintError();
                return -1;
           }
-          gcrypt.PrintKeyHex(key);
+          gcrypt.PrintHex("Key:", key);
 
           /* Get Size of file */
           signedDataLength = fOps.GetFileSize(inputFileName);
@@ -99,7 +99,7 @@ int Sundec::Decrypt(int numParams, char** params)
                gcrypt.PrintError();
                return -1;
           }
-          gcrypt.PrintKeyHex(key);
+          gcrypt.PrintHex("Key:", key);
 
           /* allocate memory to hold the signed data, encrypted data, and decrypted data */
           signedDataLength = numBytes;

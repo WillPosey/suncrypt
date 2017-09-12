@@ -35,7 +35,7 @@ typedef enum
      ERR_INVAL_HMAC      = 62,
 } parseErrorTypes;	
 
-/* Sundec Class */
+/* Sundec class declaration */
 class Sundec
 {
 public:
@@ -45,16 +45,18 @@ private:
      int Parse(int numParams, char** params);
      void ParseErrorMsg(int errCode);
 
+     /* Member Variables related to program input */
      string inputFileName;
      string outputFileName;
      string type;
      string port;
      string key;
+     bool localMode;
 
+     /* Member Variables */
      SunGcrypt gcrypt;
      SuncryptSocket* sunSocket;
      FileOps fOps;
-     bool localMode;
 };
 
 #endif //SUNDEC_H

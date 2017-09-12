@@ -259,6 +259,7 @@ int SuncryptSocket::Receive()
 		inet_ntop(AF_INET, &(senderAddr.sin_addr), senderIP, INET_ADDRSTRLEN);
 		if(firstRecv)
 		{
+			cout << "Inbound connection" << endl;
 			nextSeqNum = msgHeader.seqNum+1;
 			originalSenderIP = senderIP;
 			firstRecv = false;

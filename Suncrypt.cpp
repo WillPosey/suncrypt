@@ -66,7 +66,7 @@ int Suncrypt::Encrypt(int numParams, char** params)
           gcrypt.PrintError();
           return -1;
      }
-     gcrypt.PrintKeyHex(key);
+     gcrypt.PrintHex("Key:", key);
 
      /* Get Size of file */
      plainTextLength = fOps.GetFileSize(inputFileName);

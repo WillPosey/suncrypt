@@ -34,6 +34,7 @@ typedef struct
 	uint16_t finalBlk;
 } msgHeader_t;
 
+/* SuncryptSocket class declaration */
 class SuncryptSocket
 {
 public:
@@ -42,10 +43,12 @@ public:
 	int Send(const string destIP, const char* msg, size_t msgLength);
 	int Receive();
 	void GetRecvMsg(char* buffer, size_t bufferLength);
+	
 private:
 	void PackHeader(char* dest, msgHeader_t header);
 	void GetHeader(char* buffer, msgHeader_t* header);
 
+	/* Member Variables */
 	int sockFd;
 	bool socketGood;
 	string sendPort;

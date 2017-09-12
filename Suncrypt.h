@@ -15,7 +15,6 @@
 #include "FileOps.h"
 #include "SuncryptSocket.h"
 #include <string>
-
 using std::string;
 
 /* Input parameter definitions */
@@ -36,7 +35,7 @@ typedef enum
 /* default port to bind the socket to */
 #define SUNCRYPT_PORT "45000"
 
-/* Suncrypt Class */
+/* Suncrypt class declaration */
 class Suncrypt
 {
 public:
@@ -46,6 +45,7 @@ private:
      int Parse(int numParams, char** params);
      void ParseErrorMsg(int errCode);
 
+     /* Member Variables related to program input */
      string inputFileName;
      string outputFileName;
      string type;
@@ -53,11 +53,12 @@ private:
      string sendPort;
      string recvPort;
      string key;
+     bool localMode;
 
+     /* Member Variables */
      SunGcrypt gcrypt;
      SuncryptSocket* sunSocket;
      FileOps fOps;
-     bool localMode;
 };
 
 #endif //SUNCRYPT_H

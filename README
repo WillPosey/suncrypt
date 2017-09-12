@@ -24,7 +24,7 @@ Table of Contents
 
 *	The project involves utilizing libgcrypt to perform cryptographic functions
 
-*	Both accept a <file> input, followed by a <-l> or <-d> for the mode. 
+*	Both programs accept a <file> input, followed by a <-l> or <-d> for the mode. 
 	Local mode, <-l> encrypts a file and writes the output file to a file with the 
 	input file name appended by ".uf" in suncrypt, and decrypts a file that is 
 	assumed to have the ".uf" extension and outputs to a file with the input name 
@@ -32,6 +32,10 @@ Table of Contents
 	operations, but the	output file of suncrypt is sent over the network to sundec 
 	running	at the input <IPaddress:port>, where sundec is awaiting the arrival 
 	of the file on <port>
+
+*	Input format as specified above, for each program is:
+	./suncrypt <file-to-encrypt> [-d <IPaddress>:<port>] [-l]
+	./sundec <file-to-decrypt> [-d <port>] [-l]
 
 ====================================================================================
 2) REQUIRED FILES
@@ -52,8 +56,31 @@ Table of Contents
 3) REQUIRED LIBRARIES
 ====================================================================================
 *	The project was developed and tested on a machine with the libgcrypt20-dev 
-	package installed, which provides the libgcrypt.so dynamic library
+	package installed, which provides the libgcrypt.so and libgpg-error.so dynamic 
+	libraries, the libgcrypt.a and libgpg-error.a static libraries, and the gcrypt.h
+	and gpg-error.h header files
+
+*	The programs can both be compiled with the use of the makefile. By default, the
+	makefile will try to compile as if the libgcrypt20-dev package is installed on
+	the host system (by utilizing "-lgcrypt" to link against libgcrypt.so.20, and 
+	including gcrypt.h and gpg-error.h from /usr/include).
+
+*	If libgcrypt20-dev is not installed on the host system, the program can be
+	be compiled with the target "static" (make static) instead. This will compile
+	and link against the static libraries found in the realtive directory gcrypt/libs
+	which contains both 32 bit and 64 bit static libraries for libgcrypt and
+	libgpg-error, and will utilize the include path gcrypt/headers, where the gcrypt.h
+	and gpg-error.h headers are located
 
 ====================================================================================
 4) MISCELLANEOUS NOTES
 ====================================================================================
+*	All testing done on thunder.cise.ufl.edu was with the static libraries, due to
+	libgcrypt20-dev not being installed on the Ubuntu system
+
+*	When utilizing -d options on both suncrypt and sundec to send the encrypted file
+	to the IP address and port that sundec is listening on, either program can be 
+	started first; a simple acknowledgement system with timeouts is used for the 
+	network communication, so suncrypt will continually send the first block of the
+	encrypted file until an ack is received, while sundec simply waits for any input
+	
