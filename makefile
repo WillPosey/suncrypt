@@ -24,7 +24,7 @@ LINK_DYN		:=	-lgcrypt
 LINK 			:=	$(LINK_DYN)
 INC_HEADERS		:=	-Igcrypt/headers
 
-### determine if 32 bit or 64 bit system ###
+###   determine if 32 bit or 64 bit system    ###
 ### set to link against proper static library ###
 TYPE :=	$(shell getconf LONG_BIT)
 ifeq ($(TYPE),64)
@@ -72,4 +72,4 @@ sundec: $(OBJ_DEC)
 .PHONY: clean
 clean:
 	rm -f *.o $(TARGETS)
-	
+
