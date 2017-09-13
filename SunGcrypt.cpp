@@ -52,15 +52,16 @@ bool SunGcrypt::CreateKey(string &key, size_t keyLength)
     cin >> password;
 
     /* key derivation: PBKDF2 using SHA512 with 4 byte salt over 4096 iterartions into 128 bit key */
-    errCode = gcry_kdf_derive(	password.c_str(),   				// password
-								DecimalToOctal(password.size()),    // password length, octal
-								GCRY_KDF_PBKDF2,    				// key derivation function
-								GCRY_MD_SHA512,     				// hash algorithm used by key derivation function
-								SUNGCRY_SALT,               		// salt
-								DecimalToOctal(SUNGCRY_SALT_LENGTH),// salt length
-								SUNGCRY_SHA512_ITER,        		// # iterations
-								DecimalToOctal(keyLength),			// key size, octal
-								keyBuffer);           				// key buffer
+    errCode = gcry_kdf_derive(	password.c_str(),				// password
+								password.size(),    	// password length
+								GCRY_KDF_PBKDF2,		// key derivation function
+								GCRY_MD_SHA512,			// hash algorithm used by key derivation function
+								SUNGCRY_SALT,			// salt
+								SUNGCRY_SALT_LENGTH,	// salt length
+								SUNGCRY_SHA512_ITER,	// # iterations
+								keyLength,				// key size
+								keyBuffer);				// key buffer
+
     if(errCode)
     {
     	errMsg = "SunGcrypt::CreateKey()";
@@ -417,29 +418,6 @@ void SunGcrypt::GetNonce(unsigned char* nonceBuffer, unsigned int nonceBufferLen
 
 /************************************************************************************************************
  *	@params:
- *				unsigned int decimal: decimal value
- *	@return:
- *				octal representation of decimal value
- *	@desc:
- *				converts the input decimal value into octal
- ***********************************************************************************************************/
-size_t SunGcrypt::DecimalToOctal(unsigned int decimal)
-{
-	size_t octal = 0;
-	unsigned int i = 1;
-
-	while (decimal != 0)
-	{
-		octal += (decimal % 8) * i;
-		decimal /= 8;
-		i *= 10;
-	}
-
-	return octal;
-}
-
-/************************************************************************************************************
- *	@params:
  *				const string key: buffer holding the HMAC key
  *				unsigned char* data: buffer holding the data to create the HMAC with and append by the HMAC
  *				unsigned int dataLength: length of the data buffer
@@ -540,8 +518,8 @@ bool SunGcrypt::CheckHMAC(const string key, unsigned char* signedData, unsigned 
 	}
 
 	/* Print the signed and calculated HMACs and verify they are the same */
-	PrintHex("Signed HMAC:", string((char*)hmac, hmacLength), 8);
-	PrintHex("Calculated HMAC:", string((char*)signedHmac, hmacLength), 8);
+	PrintHex("Calculated HMAC:", string((char*)hmac, hmacLength), 8);
+	PrintHex("Signed HMAC:", string((char*)signedHmac, hmacLength), 8);
 	if(strncmp((char*)hmac, (char*)signedHmac, hmacLength) != 0)
 	{
 		errMsg = "";

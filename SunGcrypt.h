@@ -56,8 +56,6 @@ private:
 	void GetIV(unsigned char* ivBuffer, unsigned int ivBufferLength);
 	void GetNonce(unsigned char* nonceBuffer, unsigned int nonceBufferLength);
 
-	size_t DecimalToOctal(unsigned int decimal);
-
 	/* Member Variables */
 	bool aesHandleOpen;
 	gcry_cipher_hd_t aesHandle;
